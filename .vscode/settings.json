@@ -1,0 +1,53 @@
+{
+    "C_Cpp.doxygen.generatedStyle": "/**",
+    "C_Cpp.doxygen.generateOnType": true,
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.includePath": [
+        "${default}"
+    ],
+    "[bat]": {
+        "files.encoding": "cp437",
+        "files.eol": "\r\n"
+    },
+    "[shellscript]": {
+        "files.encoding": "utf8",
+        "files.eol": "\n"
+    },
+    "[c]": {
+        "editor.wordBasedSuggestions": "matchingDocuments",
+        "editor.suggest.insertMode": "replace",
+        "editor.semanticHighlighting.enabled": true,
+        "files.autoGuessEncoding": true,
+        "files.encoding": "utf8"
+    },
+    "[cpp]": {
+        "editor.wordBasedSuggestions": "matchingDocuments",
+        "editor.suggest.insertMode": "replace",
+        "editor.semanticHighlighting.enabled": true,
+        "files.autoGuessEncoding": true,
+        "files.encoding": "utf8"
+    },
+    "[powershell]": {
+        "debug.saveBeforeStart": "allEditorsInActiveGroup",
+        "editor.semanticHighlighting.enabled": "configuredByTheme",
+        "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+        "files.encoding": "utf8",    // NOTE: In PowerShell the default is UTF-8
+        "files.eol": "\r\n"
+    },
+    "[python]": {
+        "files.encoding": "utf8",
+        "files.eol": "auto",
+        "files.autoGuessEncoding": true
+    },
+    "[markdown]": {
+        "editor.wordWrap": "on",
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        },
+        "editor.suggest.preview": true,
+        "files.encoding": "utf8"
+    }
+}
