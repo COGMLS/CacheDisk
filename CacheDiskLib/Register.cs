@@ -79,5 +79,15 @@ namespace CacheDiskLib
 			this.Id = new CacheID();
 			this.CacheType = CacheType.COPY;
 		}
+
+		public bool IsRegisterOk()
+		{
+			return this.SettingsFileOk;
+		}
+
+		public bool IsCachedItemOk()
+		{
+			return this.ItemCached;
+		}
 	}
 }
