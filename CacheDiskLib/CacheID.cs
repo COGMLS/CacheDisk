@@ -1,98 +1,29 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Numerics;
-
-namespace CacheDiskLib
+﻿namespace CacheDiskLib
 {
 	public class CacheID
 	{
 		public readonly string ID;
+		public readonly CacheIdErrorCodes status;
 
 		public CacheID()
 		{
-			this.ID = CacheIdTools.GenerateUniqueCacheId();
-		}
-	}
-
-	public static class CacheIdTools
-	{
-		// Generate a numeric sequence used for Cache ID
-		private static string GenerateCacheId()
-		{
-			string id = "";
-			int maxIdRand = 5;
-
-			Random rand = new Random();
-
-			for (int i = 0; i < maxIdRand; i++)
-			{
-				int r = rand.Next(0, 9999);
-				string rs = "";
-
-				if (r < 10)
-				{
-					rs = "000" + r.ToString();
-				}
-				else if (r > 10 && r < 100)
-				{
-					rs = "00" + r.ToString();
-				}
-				else if (r > 100 && r < 1000)
-				{
-					rs = "0" + r.ToString();
-				}
-				else
-				{
-					rs = r.ToString();
-				}
-
-				if (i == 0)
-				{
-					id = rs + '-';
-				}
-				else if (i < maxIdRand - 1 && i != 0)
-				{
-					id += rs + '-';
-				}
-				else
-				{
-					id += rs;
-				}
-			}
-
-			return id;
+			this.ID = CacheIdTools.GenerateUniqueCacheId(ref status);
 		}
 
-		/// <summary>
-		/// Create a Unique Cache ID
-		/// </summary>
-		/// <returns>Cache ID Raw Data</returns>
-		public static string GenerateUniqueCacheId ()
+		public CacheID (string ID)
 		{
-			DirectoryInfo Registers = new DirectoryInfo(CacheDiskDefaultValues.DefaultCacheDiskData);
+			CacheIdErrorCodes status = CacheIdTools.GetIdStatus(ID);
 
-			List<string> Ids = new List<string>();
-
-			foreach (FileInfo Register in Registers.EnumerateFiles($"*{CacheDiskDefaultValues.DefaultCacheDiskRegExt}", SearchOption.TopDirectoryOnly))
+			if (status == CacheIdErrorCodes.ALREADY_EXIST)
 			{
-				Ids.Add(Register.Name);
+				this.ID = ID;
+				this.status = status;
 			}
-
-			string id = CacheIdTools.GenerateCacheId();
-			int i = 0;
-
-			while (i != Ids.Count - 1)
+			else
 			{
-				// If an ID is already exist generate another and test with all IDs again
-				if (Ids[i] == id)
-				{
-					id = CacheIdTools.GenerateCacheId();
-					i = 0;
-				}
+				this.ID = "";
+				this.status = status;
 			}
-
-			return id;
 		}
 	}
 }

@@ -18,23 +18,31 @@ namespace CacheDiskLib
 		/// Create a Cache Disk object to manage the cached item
 		/// </summary>
 		/// <param name="Path"></param>
-		/// <param name="Id"></param>
 		/// <param name="CachePath"></param>
-		public CacheDisk (string Path, string Id, string CachePath)
+		public CacheDisk (string Path, string CachePath)
 		{
-			
+			this.Path = Path;
+			this.BackupPath = "";
+			this.CacheDiskPath = CachePath;
+			this.Id = new CacheID();
+
+			this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
 		}
 
 		/// <summary>
-		/// Create a Cache Disk object to manage the cached item
+		/// Create a Cache Disk object to manage the cached item with backup option support
 		/// </summary>
 		/// <param name="Path"></param>
-		/// <param name="Id"></param>
 		/// <param name="CachePath"></param>
 		/// <param name="BackupPath"></param>
-		public CacheDisk (string Path, string Id, string CachePath, string BackupPath)
+		public CacheDisk (string Path, string CachePath, string BackupPath)
 		{
-			
+			this.Path = Path;
+			this.BackupPath = BackupPath;
+			this.CacheDiskPath = CachePath;
+			this.Id = new CacheID();
+
+			this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
 		}
 	}
 }
