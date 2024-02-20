@@ -16,6 +16,18 @@ namespace CacheDiskLib
 		public CacheType CacheType = CacheType.UNKNOWN;
 		public bool ItemCached = false;
 
+		private Exception ReturnLastError()
+		{
+			if (this.ErrorList == null || this.ErrorList.Count == 0)
+			{
+				return new Exception();
+			}
+			else
+			{
+				return this.ErrorList[this.ErrorList.Count - 1];
+			}
+		}
+
 		/// <summary>
 		/// Create a Cache Disk object to manage the cached item
 		/// </summary>
@@ -29,6 +41,8 @@ namespace CacheDiskLib
 			this.BackupPath = "";
 			this.CacheDiskPath = CachePath;
 			this.Id = new CacheID();
+
+			// Test all paths:
 
 			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
 			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
@@ -97,11 +111,13 @@ namespace CacheDiskLib
 
 				if (PathExceptions > 1)
 				{
-					throw new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}");
+					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
 				}
 				else
 				{
-					throw new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}");
+					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
 				}
 			}
 
@@ -133,6 +149,8 @@ namespace CacheDiskLib
 			this.BackupPath = BackupPath;
 			this.CacheDiskPath = CachePath;
 			this.Id = new CacheID();
+
+			// Test all paths:
 
 			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
 			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
@@ -228,11 +246,13 @@ namespace CacheDiskLib
 
 				if (PathExceptions > 1)
 				{
-					throw new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}");
+					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
 				}
 				else
 				{
-					throw new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}");
+					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
 				}
 			}
 
@@ -249,11 +269,19 @@ namespace CacheDiskLib
 #endif // !DEBUG
 		}
 
+		/// <summary>
+		/// Get the error detected
+		/// </summary>
+		/// <returns>Return an array of exceptions founded</returns>
 		public Exception[] GetErrorsDetected()
 		{
 			return this.ErrorList.ToArray();
 		}
 
+		/// <summary>
+		/// Make a cache for the item
+		/// </summary>
+		/// <exception cref="Exception"></exception>
 		public void CacheItem()
 		{
 			if (this.CacheDiskReg != null && this.CacheType != CacheType.UNKNOWN)
@@ -265,9 +293,11 @@ namespace CacheDiskLib
 
 					if (CacheDirInfo.Exists)
 					{
-						throw new Exception($"The cache disk path already exist!");
+						this.ErrorList.Add(new Exception("The cache disk path already exist!"));
+						throw this.ReturnLastError();
 					}
 
+					// Move cache operation:
 					if (this.CacheDiskReg.GetCacheType() == CacheType.MOVE)
 					{
 						ItemDirInfo.MoveTo(CacheDirInfo.FullName);
@@ -282,21 +312,32 @@ namespace CacheDiskLib
 							}
 							else
 							{
-								throw new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}");
+								this.ErrorList.Add(new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}"));
+								throw this.ReturnLastError();
 							}
 						}
 						else
 						{
-							throw new Exception($"Fail to create a link with target to {this.CacheDiskPath} on path {this.Path}");
+							this.ErrorList.Add(new Exception($"Fail to create a link with target to {this.CacheDiskPath} on path {this.Path}"));
+							throw this.ReturnLastError();
 						}
 					}
-					else
+					else	// Copy Cache operation:
 					{
 						DirectoryInfo BackupDirInfo = new DirectoryInfo(this.BackupPath);
 
-						if (BackupDirInfo.Exists)
+						//if (BackupDirInfo.Exists)	// Disabled: If the backup folder exist, use it as a folder to store the backup directory
+						//{
+						//	this.ErrorList.Add(new Exception("The backup path already exist!");
+						//}
+
+						// Create the parent backup folder if doesn't exist
+						if (BackupDirInfo.Parent != null)
 						{
-							throw new Exception($"The backup path already exist!");
+							if (!BackupDirInfo.Parent.Exists)
+							{
+								BackupDirInfo.Parent.Create();
+							}
 						}
 
 						try
@@ -306,13 +347,15 @@ namespace CacheDiskLib
 
 							CacheDirInfo.Create();
 
+							// Create all directories entries and copy all files inside the item's path
 							foreach (FileSystemInfo fs in itemFs)
 							{
 								string p = System.IO.Path.Combine(this.CacheDiskPath, fs.FullName.Remove(this.Path.Length));
+								//string p = System.IO.Path.Combine(this.CacheDiskPath, fs.FullName.Replace(ItemDirInfo.FullName, ""));
 								
 								if (fs.Attributes.HasFlag(FileAttributes.Directory))
 								{
-									Directory.CreateDirectory(p);
+									_ = Directory.CreateDirectory(p);
 								}
 								else
 								{
@@ -321,31 +364,208 @@ namespace CacheDiskLib
 							}
 
 							ItemDirInfo.MoveTo(this.BackupPath);
+							ItemDirInfo.Refresh();
+
+							// Only disable if DEBUG if defined
 							if (!ItemDirInfo.Attributes.HasFlag(FileAttributes.Hidden))
 							{
+#if RELEASE
 								ItemDirInfo.Attributes &= FileAttributes.Hidden;
+#endif //RELEASE
 							}
 
-							Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							string? target = link.LinkTarget;
+
+							if (target != null)
+							{
+								if (target == this.CacheDiskPath)
+								{
+									this.ItemCached = true;
+								}
+								else
+								{
+									this.ErrorList.Add(new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}"));
+									throw this.ReturnLastError();
+								}
+							}
+							else
+							{
+								this.ErrorList.Add(new Exception($"Fail to create a link with target to {this.CacheDiskPath} on path {this.Path}"));
+								throw this.ReturnLastError();
+							}
 						}
 						catch (Exception e)
 						{
+							this.ErrorList.Add(e);
 							Console.WriteLine(e.Message);
-							throw;
+							throw this.ReturnLastError();
 						}
 					}
 				}
 			}
+			else
+			{
+				if (this.CacheDiskReg == null && this.CacheType != CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't cache item without register file"));
+				}
+				else if (this.CacheDiskReg != null && this.CacheType == CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't cache item without knowing the cache type"));
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception("Can't cache item without cache type and register file"));
+				}
+			}
 		}
 		
+		/// <summary>
+		/// Restore the Cache Item to original path
+		/// </summary>
 		public void UnCacheItem()
 		{
+			if (this.CacheDiskReg != null && this.CacheType != CacheType.UNKNOWN)
+			{
+				if (this.ItemCached)
+				{
+					// Move operation:
+					if (this.CacheType == CacheType.MOVE)
+					{
+						try
+						{
+							DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
 
+							// Remove the link:
+							if (Directory.Exists(this.Path))
+							{
+								Directory.Delete(this.Path);
+							}
+
+							if (cacheDir.Exists)
+							{
+								cacheDir.MoveTo(this.Path);
+							}
+						}
+						catch (Exception e)
+						{
+							this.ErrorList.Add(e);
+							throw this.ReturnLastError();
+						}
+					}
+					else	// Copy operation:
+					{
+						try
+						{
+							DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
+							DirectoryInfo backupDir = new DirectoryInfo(this.BackupPath);
+
+							// Remove the link:
+							if (Directory.Exists(this.Path))
+							{
+								Directory.Delete(this.Path);
+							}
+
+							try
+							{
+								if (cacheDir.Exists)
+								{
+									cacheDir.MoveTo(this.Path);
+								}
+							}
+							catch (Exception e)
+							{
+								// If fail in restore the cache item to original path, set as visible the backup.
+								if (backupDir.Exists)
+								{
+									if (backupDir.Attributes.HasFlag(FileAttributes.Hidden))
+									{
+										backupDir.Attributes |= FileAttributes.Hidden;
+									}
+								}
+
+								this.ErrorList.Add(e);
+								throw this.ReturnLastError();
+							}
+						}
+						catch (Exception e)
+						{
+							this.ErrorList.Add(e);
+							throw this.ReturnLastError();
+						}
+					}
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception($"Item (${this.CacheDiskPath}) is not cached to be restored to original location (${this.Path})"));
+				}
+			}
+			else
+			{
+				if (this.CacheDiskReg == null && this.CacheType != CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without register file"));
+				}
+				else if (this.CacheDiskReg != null && this.CacheType == CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without knowing the cache type"));
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without cache type and register file"));
+				}
+			}
 		}
 
-		public void RestoreCachedItem()
+		/// <summary>
+		/// Discard the Cached Item and restore the backup content.
+		/// This function only works when the CacheType is defined as COPY.
+		/// </summary>
+		public void RevertCachedItem()
 		{
+			if (this.CacheDiskReg != null && this.CacheType != CacheType.UNKNOWN)
+			{
+				if (this.CacheType == CacheType.COPY)
+				{
+					DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
+					DirectoryInfo backupDir = new DirectoryInfo(this.BackupPath);
 
+					if (backupDir.Exists)
+					{
+						if (Directory.Exists(this.Path))
+						{
+							Directory.Delete(this.Path);
+						}
+
+						backupDir.MoveTo(this.Path);
+
+						if (cacheDir.Exists)
+						{
+							cacheDir.Delete(true);
+						}
+					}
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception("Only in COPY mode is possible revert the cache item"));
+				}
+			}
+			else
+			{
+				if (this.CacheDiskReg == null && this.CacheType != CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without register file"));
+				}
+				else if (this.CacheDiskReg != null && this.CacheType == CacheType.UNKNOWN)
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without knowing the cache type"));
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception("Can't remove cache item without cache type and register file"));
+				}
+			}
 		}
 	}
 }
