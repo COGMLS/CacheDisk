@@ -72,15 +72,18 @@ namespace CacheDiskLib
 				}
 
 				string id = CacheIdTools.GenerateCacheId();
-				int i = 0;
 
-				while (i != Ids.Count - 1)
+				if (Ids.Count > 0)
 				{
-					// If an ID is already exist generate another and test with all IDs again
-					if (Ids[i] == id)
+					int i = 0;
+					while (i != Ids.Count - 1)
 					{
-						id = CacheIdTools.GenerateCacheId();
-						i = 0;
+						// If an ID is already exist generate another and test with all IDs again
+						if (Ids[i] == id)
+						{
+							id = CacheIdTools.GenerateCacheId();
+							i = 0;
+						}
 					}
 				}
 
@@ -124,6 +127,32 @@ namespace CacheDiskLib
 			catch (Exception)
 			{
 				return CacheIdErrorCodes.FAIL_TO_CHECK_CACHE_ID;
+			}
+		}
+	}
+
+	public static class CacheDataTools
+	{
+		public static void CheckAppDataDirectory()
+		{
+			DirectoryInfo CacheDiskDir = new DirectoryInfo(CacheDiskDefaultValues.DefaultCacheDiskAppDataPath);
+
+			if (!CacheDiskDir.Exists)
+			{
+				CacheDiskDir.Create();
+			}
+
+			DirectoryInfo CacheDiskData = new DirectoryInfo(CacheDiskDefaultValues.DefaultCacheDiskData);
+			DirectoryInfo CacheDiskLogs = new DirectoryInfo(CacheDiskDefaultValues.DefaultCacheDiskLogs);
+			
+			if (!CacheDiskLogs.Exists)
+			{
+				CacheDiskLogs.Create();
+			}
+
+			if (!CacheDiskData.Exists)
+			{
+				CacheDiskData.Create();
 			}
 		}
 	}

@@ -263,7 +263,7 @@ namespace CacheDiskLib
 		{
 			this.Errors = new List<CacheDiskRegisterErrorCodes>();
 
-			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
 
 			this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
 
@@ -304,7 +304,7 @@ namespace CacheDiskLib
 		{
 			this.Errors = new List<CacheDiskRegisterErrorCodes>();
 
-			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
 
 			this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
 

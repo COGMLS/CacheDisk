@@ -4,7 +4,7 @@ using System.IO;
 
 namespace CacheDiskLib
 {
-	internal class CacheDisk
+	public class CacheDisk
 	{
 		private Register? CacheDiskReg = null;
 		private List<Exception> ErrorList;
@@ -35,6 +35,8 @@ namespace CacheDiskLib
 		/// <param name="CachePath"></param>
 		public CacheDisk (string Path, string CachePath)
 		{
+			CacheDataTools.CheckAppDataDirectory();
+
 			this.ErrorList = new List<Exception>();
 
 			this.Path = Path;
@@ -85,6 +87,7 @@ namespace CacheDiskLib
 			if (isPathOk && isCacheDiskPathOk)
 			{
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
+				this.CacheType = CacheType.MOVE;
 
 				if (this.CacheDiskReg == null)
 				{
@@ -143,6 +146,8 @@ namespace CacheDiskLib
 		/// <param name="BackupPath"></param>
 		public CacheDisk (string Path, string CachePath, string BackupPath)
 		{
+			CacheDataTools.CheckAppDataDirectory();
+
 			this.ErrorList = new List<Exception>();
 
 			this.Path = Path;
@@ -220,6 +225,13 @@ namespace CacheDiskLib
 			if (isPathOk && isCacheDiskPathOk && isBackupPathOk)
 			{
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
+				this.CacheType = CacheType.COPY;
+
+				if (this.CacheDiskReg == null)
+				{
+					this.ErrorList.Add(new Exception("Fail to create object register"));
+					this.CacheType = CacheType.UNKNOWN;
+				}
 			}
 			else
 			{
