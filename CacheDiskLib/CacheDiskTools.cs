@@ -84,6 +84,8 @@ namespace CacheDiskLib
 							id = CacheIdTools.GenerateCacheId();
 							i = 0;
 						}
+
+						i++;
 					}
 				}
 
