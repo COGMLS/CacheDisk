@@ -8,6 +8,11 @@ namespace CacheDiskLib
 	{
 		private Register? CacheDiskReg = null;
 		private List<Exception> ErrorList;
+		private bool replicateAccessControl = false;
+		private bool replicateFileAttributes = true;
+		private bool UseJunction = false;
+		private bool ShowConsoleOutput = false;
+		private FileSystemInfo? link = null;
 
 		public string Path;
 		public string BackupPath;
@@ -314,9 +319,15 @@ namespace CacheDiskLib
 					{
 						try
 						{
-							ItemDirInfo.MoveTo(CacheDirInfo.FullName);
-							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
-							string? target = link.LinkTarget;
+							if (this.ShowConsoleOutput)
+							{
+								Console.WriteLine($"Caching ({this.Path}) into ({this.CacheDiskPath}) with operation type: {this.CacheType.ToString()}");
+							}
+
+							CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
+							
+							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							string? target = this.link.LinkTarget;
 
 							if (target != null)
 							{
@@ -346,55 +357,51 @@ namespace CacheDiskLib
 					{
 						DirectoryInfo BackupDirInfo = new DirectoryInfo(this.BackupPath);
 
-						//if (BackupDirInfo.Exists)	// Disabled: If the backup folder exist, use it as a folder to store the backup directory
-						//{
-						//	this.ErrorList.Add(new Exception("The backup path already exist!");
-						//}
-
 						// Create the parent backup folder if doesn't exist
 						if (BackupDirInfo.Parent != null)
 						{
 							if (!BackupDirInfo.Parent.Exists)
 							{
-								BackupDirInfo.Parent.Create();
+								try
+								{
+									BackupDirInfo.Parent.Create();
+								}
+								catch (Exception e)
+								{
+									this.ErrorList.Add(e);
+								}
 							}
 						}
 
 						try
 						{
+							if (this.ShowConsoleOutput)
+							{
+								Console.WriteLine($"Caching ({this.Path}) into ({this.CacheDiskPath}) with operation type: {this.CacheType.ToString()}");
+							}
+
 							// Get the contents to copy into the Cache Disk path
-							IEnumerable<FileSystemInfo> itemFs = ItemDirInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories);
+							CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 
-							CacheDirInfo.Create();
-
-							// Create all directories entries and copy all files inside the item's path
-							foreach (FileSystemInfo fs in itemFs)
+							if (this.ShowConsoleOutput)
 							{
-								string p = System.IO.Path.Combine(this.CacheDiskPath, fs.FullName.Remove(this.Path.Length));
-								//string p = System.IO.Path.Combine(this.CacheDiskPath, fs.FullName.Replace(ItemDirInfo.FullName, ""));
-								
-								if (fs.Attributes.HasFlag(FileAttributes.Directory))
-								{
-									_ = Directory.CreateDirectory(p);
-								}
-								else
-								{
-									File.Copy(fs.FullName, p);
-								}
+								Console.WriteLine($"Making backup of ({this.Path}) into ({this.BackupPath})");
 							}
 
-							ItemDirInfo.MoveTo(this.BackupPath);
-							ItemDirInfo.Refresh();
-
-							// Only disable if DEBUG if defined
-							if (!ItemDirInfo.Attributes.HasFlag(FileAttributes.Hidden))
+							if (ItemDirInfo.Root.FullName == BackupDirInfo.Root.FullName)
 							{
+								ItemDirInfo.MoveTo(BackupDirInfo.FullName);
+								BackupDirInfo.Refresh();
 #if RELEASE
-								ItemDirInfo.Attributes &= FileAttributes.Hidden;
-#endif //RELEASE
+								BackupDirInfo.Attributes &= FileAttributes.Hidden;
+#endif // RELEASE
+							}
+							else
+							{
+								CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, true);
 							}
 
-							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
 							string? target = link.LinkTarget;
 
 							if (target != null)
@@ -444,75 +451,80 @@ namespace CacheDiskLib
 		/// <summary>
 		/// Restore the Cache Item to original path
 		/// </summary>
-		public void UnCacheItem()
+		public void RestoreCache()
 		{
 			if (this.CacheDiskReg != null && this.CacheType != CacheType.UNKNOWN)
 			{
 				if (this.ItemCached)
 				{
-					// Move operation:
-					if (this.CacheType == CacheType.MOVE)
+					try
 					{
-						try
+						DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
+
+						// Remove the link:
+
+						if (this.link != null)
 						{
-							DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
-
-							// Remove the link:
-							if (Directory.Exists(this.Path))
+							if (this.link.Exists)
 							{
-								Directory.Delete(this.Path);
-							}
-
-							if (cacheDir.Exists)
-							{
-								cacheDir.MoveTo(this.Path);
+								this.link.Delete();
+								this.link = null;
 							}
 						}
-						catch (Exception e)
-						{
-							this.ErrorList.Add(e);
-							throw this.ReturnLastError();
-						}
-					}
-					else	// Copy operation:
-					{
-						try
-						{
-							DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
-							DirectoryInfo backupDir = new DirectoryInfo(this.BackupPath);
 
-							// Remove the link:
-							if (Directory.Exists(this.Path))
-							{
-								Directory.Delete(this.Path);
-							}
+						DirectoryInfo itemDir = new DirectoryInfo(this.Path);
+
+						if (cacheDir.Exists)
+						{
+							bool failToRestore = false;
 
 							try
 							{
-								if (cacheDir.Exists)
+								if (this.ShowConsoleOutput)
+								{
+									Console.WriteLine($"Restoring cached item ({this.CacheDiskPath}) into ({this.Path})");
+								}
+
+								if (cacheDir.Root.FullName == this.Path)
 								{
 									cacheDir.MoveTo(this.Path);
+								}
+								else
+								{
+									CacheDiskTransferTool.TransferData(cacheDir.FullName, itemDir.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 								}
 							}
 							catch (Exception e)
 							{
-								// If fail in restore the cache item to original path, set as visible the backup.
-								if (backupDir.Exists)
-								{
-									if (backupDir.Attributes.HasFlag(FileAttributes.Hidden))
-									{
-										backupDir.Attributes |= FileAttributes.Hidden;
-									}
-								}
+								failToRestore = true;
 
 								this.ErrorList.Add(e);
-								throw this.ReturnLastError();
+
+								// If fail to restore the cache, revert to backup
+								if (this.CacheType == CacheType.COPY)
+								{
+									this.RevertCachedItem();
+								}
+							}
+
+							if (!failToRestore)
+							{
+								
 							}
 						}
-						catch (Exception e)
+						else
 						{
-							this.ErrorList.Add(e);
-							throw this.ReturnLastError();
+							this.ErrorList.Add(new Exception($"The cached item ({cacheDir.FullName}) is not available to be restored in ({itemDir.FullName})"));
+						}
+					}
+					catch (Exception e)
+					{
+						this.ErrorList.Add(e);
+						
+						// If fail to restore the cache, revert to backup
+						if (this.CacheType == CacheType.COPY)
+						{
+							this.RevertCachedItem();
 						}
 					}
 				}
@@ -553,16 +565,47 @@ namespace CacheDiskLib
 
 					if (backupDir.Exists)
 					{
-						if (Directory.Exists(this.Path))
+						bool failToRevert = false;
+
+						try
 						{
-							Directory.Delete(this.Path);
+							// Remove the link available in path:
+							if (Directory.Exists(this.Path))
+							{
+								Directory.Delete(this.Path);
+							}
+
+							if (this.ShowConsoleOutput)
+							{
+								Console.WriteLine($"Reverting cached item ({this.CacheDiskPath}) to ({this.BackupPath})");
+							}
+
+							if (backupDir.Root.FullName == this.Path)
+							{
+								backupDir.MoveTo(this.Path);
+							}
+							else
+							{
+								CacheDiskTransferTool.TransferData(backupDir.FullName, this.Path, CacheType.MOVE, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+							}
+						}
+						catch (Exception e)
+						{
+							failToRevert = true;
+							this.ErrorList.Add(e);
 						}
 
-						backupDir.MoveTo(this.Path);
-
-						if (cacheDir.Exists)
+						// Remove the cached directory only if the backup was restored with success:
+						if (!failToRevert)
 						{
-							cacheDir.Delete(true);
+							if (cacheDir.Exists)
+							{
+								cacheDir.Delete(true);
+							}
+						}
+						else
+						{
+							this.ErrorList.Add(new Exception($"Fail to revert the backup ({this.BackupPath} to location: {this.Path}. Leaving the cached directory on {this.CacheDiskPath}"));
 						}
 					}
 				}
@@ -586,6 +629,31 @@ namespace CacheDiskLib
 					this.ErrorList.Add(new Exception("Can't remove cache item without cache type and register file"));
 				}
 			}
+		}
+
+		public void SetConsoleOutputOperation(bool activeOutput)
+		{
+			this.ShowConsoleOutput = activeOutput;
+		}
+
+		public void SetReplicateFileAttributes(bool replicateFileAttributes)
+		{
+			this.replicateFileAttributes = replicateFileAttributes;
+		}
+
+		public void SetReplicateAccessControl(bool replicateAccessControl)
+		{
+			this.replicateAccessControl = replicateAccessControl;
+		}
+
+		public Exception[] GetErrors()
+		{
+			return this.ErrorList.ToArray();
+		}
+
+		public void CleanErrors()
+		{
+			this.ErrorList.Clear();
 		}
 	}
 }
