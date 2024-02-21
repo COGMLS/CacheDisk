@@ -166,7 +166,7 @@ namespace CacheDiskLib
 								{
 									PathFieldExist = true;
 
-									string Path = r.Remove(CacheDiskDefaultValues.RegisterFileField_Path.Length);
+									string Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
 
 									if (Path != this.Path)
 									{
@@ -178,7 +178,7 @@ namespace CacheDiskLib
 								{
 									IdFieldExist = true;
 
-									string Id = r.Remove(CacheDiskDefaultValues.RegisterFileField_Id.Length);
+									string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
 
 									if (Id != this.Id.ID)
 									{
@@ -190,7 +190,7 @@ namespace CacheDiskLib
 								{
 									CacheDiskPathFieldExist= true;
 
-									string CacheDiskPath = r.Remove(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
+									string CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
 
 									if (CacheDiskPath != this.CacheDiskPath)
 									{
@@ -202,7 +202,7 @@ namespace CacheDiskLib
 								{
 									BackupPathFieldExist= true;
 
-									string BackupPath = r.Remove(CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
+									string BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
 
 									if (this.BackupPath.Length > 0 && this.CacheType == CacheType.COPY)
 									{

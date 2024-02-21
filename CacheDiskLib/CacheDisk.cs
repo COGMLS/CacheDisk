@@ -312,25 +312,33 @@ namespace CacheDiskLib
 					// Move cache operation:
 					if (this.CacheDiskReg.GetCacheType() == CacheType.MOVE)
 					{
-						ItemDirInfo.MoveTo(CacheDirInfo.FullName);
-						FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
-						string? target = link.LinkTarget;
-
-						if (target != null)
+						try
 						{
-							if (target == this.CacheDiskPath)
+							ItemDirInfo.MoveTo(CacheDirInfo.FullName);
+							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							string? target = link.LinkTarget;
+
+							if (target != null)
 							{
-								this.ItemCached = true;
+								if (target == this.CacheDiskPath)
+								{
+									this.ItemCached = true;
+								}
+								else
+								{
+									this.ErrorList.Add(new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}"));
+									throw this.ReturnLastError();
+								}
 							}
 							else
 							{
-								this.ErrorList.Add(new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}"));
+								this.ErrorList.Add(new Exception($"Fail to create a link with target to {this.CacheDiskPath} on path {this.Path}"));
 								throw this.ReturnLastError();
 							}
 						}
-						else
+						catch (Exception e)
 						{
-							this.ErrorList.Add(new Exception($"Fail to create a link with target to {this.CacheDiskPath} on path {this.Path}"));
+							this.ErrorList.Add(e);
 							throw this.ReturnLastError();
 						}
 					}
@@ -510,7 +518,7 @@ namespace CacheDiskLib
 				}
 				else
 				{
-					this.ErrorList.Add(new Exception($"Item (${this.CacheDiskPath}) is not cached to be restored to original location (${this.Path})"));
+					this.ErrorList.Add(new Exception($"Item ({this.CacheDiskPath}) is not cached to be restored to original location ({this.Path})"));
 				}
 			}
 			else

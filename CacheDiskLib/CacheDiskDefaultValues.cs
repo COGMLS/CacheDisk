@@ -3,11 +3,11 @@ using System.IO;
 
 namespace CacheDiskLib
 {
-	internal static class CacheDiskDefaultValues
+	public static class CacheDiskDefaultValues
 	{
 		// Cache Disk Default Paths, files and extensions:
 
-		public static readonly string DefaultCacheDiskAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CacheDisk");
+		public static readonly string DefaultCacheDiskAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CacheDisk");
 		public static readonly string DefaultCacheDiskLogs = Path.Combine(DefaultCacheDiskAppDataPath, "Logs");
 		public static readonly string DefaultCacheDiskData = Path.Combine(DefaultCacheDiskAppDataPath, "Data");
 		public static readonly string DefaultCacheDiskConfig = Path.Combine(DefaultCacheDiskAppDataPath, "Settings.ini");
