@@ -324,7 +324,7 @@ namespace CacheDiskLib
 								Console.WriteLine($"Caching ({this.Path}) into ({this.CacheDiskPath}) with operation type: {this.CacheType.ToString()}");
 							}
 
-							CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
+							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
 							
 							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
 							string? target = this.link.LinkTarget;
@@ -381,7 +381,7 @@ namespace CacheDiskLib
 							}
 
 							// Get the contents to copy into the Cache Disk path
-							CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 
 							if (this.ShowConsoleOutput)
 							{
@@ -398,7 +398,7 @@ namespace CacheDiskLib
 							}
 							else
 							{
-								CacheDiskTransferTool.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, true);
+								CacheDiskDataTools.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, true);
 							}
 
 							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
@@ -491,7 +491,7 @@ namespace CacheDiskLib
 								}
 								else
 								{
-									CacheDiskTransferTool.TransferData(cacheDir.FullName, itemDir.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+									CacheDiskDataTools.TransferData(cacheDir.FullName, itemDir.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 								}
 							}
 							catch (Exception e)
@@ -586,7 +586,7 @@ namespace CacheDiskLib
 							}
 							else
 							{
-								CacheDiskTransferTool.TransferData(backupDir.FullName, this.Path, CacheType.MOVE, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+								CacheDiskDataTools.TransferData(backupDir.FullName, this.Path, CacheType.MOVE, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 							}
 						}
 						catch (Exception e)

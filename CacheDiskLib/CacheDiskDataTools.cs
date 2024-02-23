@@ -9,7 +9,7 @@ using System.Security.AccessControl;
 
 namespace CacheDiskLib
 {
-	internal static class CacheDiskTransferTool
+	internal static class CacheDiskDataTools
 	{
 		public static void TransferData (string path, string destination, CacheType operationType, bool hiddenDestination, bool replicateAttributes, bool replicateAccessControl, ref List<Exception> ErrorList, bool showOnConsole = false)
 		{
