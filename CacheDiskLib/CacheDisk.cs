@@ -36,8 +36,8 @@ namespace CacheDiskLib
 		/// <summary>
 		/// Create a Cache Disk object to manage the cached item
 		/// </summary>
-		/// <param name="Path"></param>
-		/// <param name="CachePath"></param>
+		/// <param name="Path">Location of the directory to cached it.</param>
+		/// <param name="CachePath">Location to store the cached directory. Recommended to store in a faster disk than original location.</param>
 		public CacheDisk (string Path, string CachePath)
 		{
 			CacheDataTools.CheckAppDataDirectory();
@@ -133,11 +133,13 @@ namespace CacheDiskLib
 			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
 
 			if (this.CacheDiskReg != null)
-			if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
 			{
-				foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
 				{
-					this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+					{
+						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					}
 				}
 			}
 #endif
@@ -146,9 +148,9 @@ namespace CacheDiskLib
 		/// <summary>
 		/// Create a Cache Disk object to manage the cached item with backup option support
 		/// </summary>
-		/// <param name="Path"></param>
-		/// <param name="CachePath"></param>
-		/// <param name="BackupPath"></param>
+		/// <param name="Path">Location of the directory to cached it.</param>
+		/// <param name="CachePath">Location to store the cached directory. Recommended to store in a faster disk than original location.</param>
+		/// <param name="BackupPath">Location to store the backup to recover the original data if fail.</param>
 		public CacheDisk (string Path, string CachePath, string BackupPath)
 		{
 			CacheDataTools.CheckAppDataDirectory();
@@ -276,11 +278,169 @@ namespace CacheDiskLib
 #if DEBUG
 			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
 
-			if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
+			if (this.CacheDiskReg != null)
 			{
-				foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
 				{
-					this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+					{
+						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					}
+				}
+			}
+#endif // !DEBUG
+		}
+
+		/// <summary>
+		/// Create a Cache Disk object to manage the cached item with backup option support
+		/// </summary>
+		/// <param name="Path">Location of the directory to cached it.</param>
+		/// <param name="CachePath">Location to store the cached directory. Recommended to store in a faster disk than original location.</param>
+		/// <param name="MakeBackup">Use the Path information to define the name of backup if defined as TRUE</param>
+		public CacheDisk(string Path, string CachePath, bool MakeBackup)
+		{
+			CacheDataTools.CheckAppDataDirectory();
+
+			this.ErrorList = new List<Exception>();
+
+			this.Path = Path;
+			this.BackupPath = "";
+			this.CacheDiskPath = CachePath;
+			this.Id = new CacheID();
+
+			// Test all paths:
+
+			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
+			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
+
+			if (isPathOk)
+			{
+				this.Path = System.IO.Path.GetFullPath(this.Path);
+
+				if (MakeBackup)
+				{
+					this.BackupPath = this.Path + ".cached";
+				}
+			}
+			else
+			{
+				this.ErrorList.Add(new Exception("Path is not fully qualified!"));
+			}
+
+			bool isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.BackupPath);
+
+			if (isCacheDiskPathOk)
+			{
+				this.CacheDiskPath = System.IO.Path.GetFullPath(this.CacheDiskPath);
+
+				if (isPathOk)
+				{
+					DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
+
+					// Treat the cache disk path if only the root directory was send
+					if (!this.CacheDiskPath.EndsWith(pathInfo.Name))
+					{
+						this.CacheDiskPath = System.IO.Path.Combine(this.CacheDiskPath, pathInfo.Name);
+
+						if (Directory.Exists(this.CacheDiskPath))
+						{
+							// If a path to this location already exist generate a error:
+							this.ErrorList.Add(new Exception($"Cache Disk Path already used! ({this.CacheDiskPath})"));
+						}
+					}
+				}
+			}
+			else
+			{
+				this.ErrorList.Add(new Exception("CacheDiskPath is not fully qualified!"));
+			}
+
+			if (isBackupPathOk)
+			{
+				DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
+
+				// Treat the backup path if only the root directory was send
+				if (!this.BackupPath.EndsWith(pathInfo.Name + ".cached"))
+				{
+					this.BackupPath = System.IO.Path.Combine(this.BackupPath, pathInfo.Name + ".cached");
+
+					if (Directory.Exists(this.BackupPath))
+					{
+						// If a path to this location already exist generate a error:
+						this.ErrorList.Add(new Exception($"Backup Path already used! ({this.BackupPath})"));
+					}
+				}
+			}
+			else
+			{
+				this.ErrorList.Add(new Exception("BackupPath is not fully qualified!"));
+			}
+
+			if (isPathOk && isCacheDiskPathOk)
+			{
+				if (MakeBackup)
+				{
+					this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
+					this.CacheType = CacheType.MOVE;
+				}
+				else
+				{
+					this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
+					this.CacheType = CacheType.COPY;
+				}
+
+				if (this.CacheDiskReg == null)
+				{
+					this.ErrorList.Add(new Exception("Fail to create object register"));
+					this.CacheType = CacheType.UNKNOWN;
+				}
+			}
+			else
+			{
+				string PathsNotOk = "";
+				short PathExceptions = 0;
+
+				if (!isPathOk)
+				{
+					PathsNotOk += $" {this.Path}";
+					PathExceptions++;
+				}
+
+				if (!isCacheDiskPathOk)
+				{
+					PathsNotOk += $" {this.CacheDiskPath}";
+					PathExceptions++;
+				}
+
+				if (!isBackupPathOk && MakeBackup)
+				{
+					PathsNotOk += $" {this.BackupPath}";
+					PathExceptions++;
+				}
+
+				if (PathExceptions > 1)
+				{
+					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
+					throw this.ReturnLastError();
+				}
+			}
+
+#if DEBUG
+			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
+
+			if (this.CacheDiskReg != null)
+			{
+				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
+				{
+					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+					{
+						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					}
 				}
 			}
 #endif // !DEBUG
@@ -315,7 +475,7 @@ namespace CacheDiskLib
 					}
 
 					// Move cache operation:
-					if (this.CacheDiskReg.GetCacheType() == CacheType.MOVE)
+					if (this.CacheType == CacheType.MOVE)
 					{
 						try
 						{
@@ -324,7 +484,7 @@ namespace CacheDiskLib
 								Console.WriteLine($"Caching ({this.Path}) into ({this.CacheDiskPath}) with operation type: {this.CacheType.ToString()}");
 							}
 
-							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
+							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, this.CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
 							
 							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
 							string? target = this.link.LinkTarget;
@@ -381,13 +541,14 @@ namespace CacheDiskLib
 							}
 
 							// Get the contents to copy into the Cache Disk path
-							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, this.CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 
 							if (this.ShowConsoleOutput)
 							{
 								Console.WriteLine($"Making backup of ({this.Path}) into ({this.BackupPath})");
 							}
 
+							// Make the backup before create a link file with the same path:
 							if (ItemDirInfo.Root.FullName == BackupDirInfo.Root.FullName)
 							{
 								ItemDirInfo.MoveTo(BackupDirInfo.FullName);
@@ -396,9 +557,9 @@ namespace CacheDiskLib
 								BackupDirInfo.Attributes &= FileAttributes.Hidden;
 #endif // RELEASE
 							}
-							else
+							else	// If the root is not the same use the TransferData function to move the directory
 							{
-								CacheDiskDataTools.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, true);
+								CacheDiskDataTools.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 							}
 
 							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
@@ -489,9 +650,9 @@ namespace CacheDiskLib
 								{
 									cacheDir.MoveTo(this.Path);
 								}
-								else
+								else	// If the root is not the same, move with TransferData function:
 								{
-									CacheDiskDataTools.TransferData(cacheDir.FullName, itemDir.FullName, CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
+									CacheDiskDataTools.TransferData(cacheDir.FullName, itemDir.FullName, CacheType.MOVE, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 								}
 							}
 							catch (Exception e)
@@ -499,17 +660,13 @@ namespace CacheDiskLib
 								failToRestore = true;
 
 								this.ErrorList.Add(e);
+								this.ErrorList.Add(new Exception($"Fail to restore the cached item ({cacheDir.FullName}) on location ({itemDir.FullName})"));
 
 								// If fail to restore the cache, revert to backup
 								if (this.CacheType == CacheType.COPY)
 								{
 									this.RevertCachedItem();
 								}
-							}
-
-							if (!failToRestore)
-							{
-								
 							}
 						}
 						else
@@ -521,7 +678,7 @@ namespace CacheDiskLib
 					{
 						this.ErrorList.Add(e);
 						
-						// If fail to restore the cache, revert to backup
+						// If the cached item is missing, revert to the backup
 						if (this.CacheType == CacheType.COPY)
 						{
 							this.RevertCachedItem();
