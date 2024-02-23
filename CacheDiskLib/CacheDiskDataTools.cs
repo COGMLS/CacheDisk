@@ -213,6 +213,14 @@ namespace CacheDiskLib
 			{
 				DestinationInfo.Attributes &= FileAttributes.Hidden;
 			}
+			else
+			{
+				if (DestinationInfo.Attributes.HasFlag(FileAttributes.Hidden))
+				{
+					// Remove Hidden from the attributes
+					DestinationInfo.Attributes |= FileAttributes.Hidden;
+				}
+			}
 		}
 	}
 }
