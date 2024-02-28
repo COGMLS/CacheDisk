@@ -100,23 +100,23 @@ namespace CacheDiskLib
 
 						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Path))
 						{
-							this.Path = r.Remove(CacheDiskDefaultValues.RegisterFileField_Path.Length);
+							this.Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
 						}
 
 						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Id))
 						{
-							string Id = r.Remove(CacheDiskDefaultValues.RegisterFileField_Id.Length);
+							string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
 							this.Id = new CacheID(Id);
 						}
 						
 						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath))
 						{
-							this.CacheDiskPath = r.Remove(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
+							this.CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
 						}
 
 						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
 						{
-							this.BackupPath = r.Remove(CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
+							this.BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
 						}
 					}
 				}
@@ -263,9 +263,18 @@ namespace CacheDiskLib
 		{
 			this.Errors = new List<CacheDiskRegisterErrorCodes>();
 
-			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+			string? settingsFilePathTmp = RegisterTools.FindRegisterByPath(Path);
 
-			this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
+			if (settingsFilePathTmp == null)
+			{
+				this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+				this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
+			}
+			else
+			{
+				this.SettingsFilePath = settingsFilePathTmp;
+				this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
+			}
 
 			this.Path = Path;
 			this.BackupPath = "";
@@ -273,22 +282,38 @@ namespace CacheDiskLib
 			this.Id = Id;
 			this.CacheType = CacheType.MOVE;
 
-			if (!this.SettingsFileInfo.Exists)
+			try
 			{
-				this.SettingsFileStream = this.SettingsFileInfo.Create();
-
-				this.WriteRegister(true);
-
-				this.SettingsFileStream.Close();
-
-				if (this.Errors.Count == 0)
+				if (!this.SettingsFileInfo.Exists)
 				{
-					this.SettingsFileOk = true;
+					this.SettingsFileStream = this.SettingsFileInfo.Create();
+
+					this.WriteRegister(true);
+
+					this.SettingsFileStream.Close();
+				}
+				else
+				{
+					this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
+				
+					this.ReadRegister();
+
+					this.SettingsFileStream.Close();
 				}
 			}
-			else
+			catch (Exception e)
 			{
-				throw new Exception("The register file already exists!");
+				
+			}
+
+			if (this.Id.status != CacheIdErrorCodes.CREATED && this.Id.status != CacheIdErrorCodes.ALREADY_EXIST)
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_FOUND);
+			}
+
+			if (this.Errors.Count == 0)
+			{
+				this.SettingsFileOk = true;
 			}
 		}
 
@@ -304,9 +329,18 @@ namespace CacheDiskLib
 		{
 			this.Errors = new List<CacheDiskRegisterErrorCodes>();
 
-			this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+			string? settingsFilePathTmp = RegisterTools.FindRegisterByPath(Path);
 
-			this.SettingsFileInfo = new FileInfo (this.SettingsFilePath);
+			if (settingsFilePathTmp == null)
+			{
+				this.SettingsFilePath = System.IO.Path.Combine(CacheDiskDefaultValues.DefaultCacheDiskData, $"{Id.ID}{CacheDiskDefaultValues.DefaultCacheDiskRegExt}");
+				this.SettingsFileInfo = new FileInfo(this.SettingsFilePath);
+			}
+			else
+			{
+				this.SettingsFilePath = settingsFilePathTmp;
+				this.SettingsFileInfo = new FileInfo(this.SettingsFilePath);
+			}
 
 			this.Path = Path;
 			this.BackupPath = BackupPath;
@@ -314,22 +348,38 @@ namespace CacheDiskLib
 			this.Id = Id;
 			this.CacheType = CacheType.COPY;
 
-			if (!this.SettingsFileInfo.Exists)
+			try
 			{
-				this.SettingsFileStream = this.SettingsFileInfo.Create();
-				
-				this.WriteRegister(true);
-
-				this.SettingsFileStream.Close();
-
-				if (this.Errors.Count == 0)
+				if (!this.SettingsFileInfo.Exists)
 				{
-					this.SettingsFileOk = true;
+					this.SettingsFileStream = this.SettingsFileInfo.Create();
+
+					this.WriteRegister(true);
+
+					this.SettingsFileStream.Close();
+				}
+				else
+				{
+					this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
+
+					this.ReadRegister();
+
+					this.SettingsFileStream.Close();
 				}
 			}
-			else
+			catch (Exception e)
 			{
-				throw new Exception("The register file already exists!");
+
+			}
+
+			if (this.Id.status != CacheIdErrorCodes.CREATED && this.Id.status != CacheIdErrorCodes.ALREADY_EXIST)
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_FOUND);
+			}
+
+			if (this.Errors.Count == 0)
+			{
+				this.SettingsFileOk = true;
 			}
 		}
 
@@ -386,9 +436,9 @@ namespace CacheDiskLib
 			return this.CacheDiskPath;
 		}
 
-		public string GetId()
+		public CacheID GetId()
 		{
-			return this.Id.ID;
+			return this.Id;
 		}
 
 		public CacheType GetCacheType()
