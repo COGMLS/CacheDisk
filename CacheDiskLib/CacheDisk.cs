@@ -92,7 +92,8 @@ namespace CacheDiskLib
 			if (isPathOk && isCacheDiskPathOk)
 			{
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
-				this.CacheType = CacheType.MOVE;
+				this.CacheType = this.CacheDiskReg.GetCacheType();
+				this.Id = this.CacheDiskReg.GetId();
 
 				if (this.CacheDiskReg == null)
 				{
@@ -232,7 +233,8 @@ namespace CacheDiskLib
 			if (isPathOk && isCacheDiskPathOk && isBackupPathOk)
 			{
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
-				this.CacheType = CacheType.COPY;
+				this.CacheType = this.CacheDiskReg.GetCacheType();
+				this.Id = this.CacheDiskReg.GetId();
 
 				if (this.CacheDiskReg == null)
 				{
@@ -381,13 +383,14 @@ namespace CacheDiskLib
 				if (MakeBackup)
 				{
 					this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
-					this.CacheType = CacheType.MOVE;
 				}
 				else
 				{
 					this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
-					this.CacheType = CacheType.COPY;
 				}
+
+				this.CacheType = this.CacheDiskReg.GetCacheType();
+				this.Id = this.CacheDiskReg.GetId();
 
 				if (this.CacheDiskReg == null)
 				{
