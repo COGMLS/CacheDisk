@@ -654,6 +654,17 @@ namespace CacheDiskLib
 								{
 									CacheDiskDataTools.TransferData(cacheDir.FullName, itemDir.FullName, CacheType.MOVE, false, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 								}
+
+								// Remove the backup directory if exist:
+								if (this.CacheType == CacheType.COPY)
+								{
+									DirectoryInfo backupDirInfo = new DirectoryInfo(this.BackupPath);
+
+									if (backupDirInfo.Exists)
+									{
+										backupDirInfo.Delete(true);
+									}
+								}
 							}
 							catch (Exception e)
 							{
@@ -737,6 +748,7 @@ namespace CacheDiskLib
 								Console.WriteLine($"Reverting cached item ({this.CacheDiskPath}) to ({this.BackupPath})");
 							}
 
+							// Move the backup folder to original location:
 							if (backupDir.Root.FullName == this.Path)
 							{
 								backupDir.MoveTo(this.Path);
