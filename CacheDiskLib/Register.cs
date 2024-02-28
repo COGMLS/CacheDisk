@@ -28,7 +28,7 @@ namespace CacheDiskLib
 		private string CacheDiskPath;
 		private CacheID Id;
 		private CacheType CacheType = CacheType.UNKNOWN;
-		//private bool ItemCached = false;
+		//private CacheStatus ItemCacheStatus = CacheStatus.NOT_CACHED;
 
 		// Read the inteire register stream and convert it to text
 		private string[] ReadRegStream()
@@ -401,14 +401,14 @@ namespace CacheDiskLib
 			return this.CacheType.ToString();
 		}
 
-		//public bool GetItemCached()
+		//public CacheStatus GetItemCached()
 		//{
-		//	return this.ItemCached;
+		//	return this.ItemCacheStatus;
 		//}
 
 		//public string GetItemCachedStr()
 		//{
-		//	return this.ItemCached.ToString();
+		//	return this.ItemCacheStatus.ToString();
 		//}
 
 		public bool IsRegisterOk()
@@ -418,7 +418,7 @@ namespace CacheDiskLib
 
 		//public bool IsCachedItemOk()
 		//{
-		//	return this.ItemCached;
+		//	return this.ItemCacheStatus && CacheStatus.CACHED;
 		//}
 
 		public List<CacheDiskRegisterErrorCodes> GetRegisterErrors()

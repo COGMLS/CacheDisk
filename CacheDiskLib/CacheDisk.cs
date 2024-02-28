@@ -19,7 +19,7 @@ namespace CacheDiskLib
 		public string CacheDiskPath;
 		public CacheID Id;
 		public CacheType CacheType = CacheType.UNKNOWN;
-		public bool ItemCached = false;
+		public CacheStatus ItemCacheStatus = CacheStatus.NOT_CACHED;
 
 		private Exception ReturnLastError()
 		{
@@ -493,7 +493,7 @@ namespace CacheDiskLib
 							{
 								if (target == this.CacheDiskPath)
 								{
-									this.ItemCached = true;
+									this.ItemCacheStatus = CacheStatus.CACHED;
 								}
 								else
 								{
@@ -509,6 +509,7 @@ namespace CacheDiskLib
 						}
 						catch (Exception e)
 						{
+							this.ItemCacheStatus = CacheStatus.FAIL_TO_CACHE;
 							this.ErrorList.Add(e);
 							throw this.ReturnLastError();
 						}
@@ -569,10 +570,11 @@ namespace CacheDiskLib
 							{
 								if (target == this.CacheDiskPath)
 								{
-									this.ItemCached = true;
+									this.ItemCacheStatus = CacheStatus.CACHED;
 								}
 								else
 								{
+									this.ItemCacheStatus = CacheStatus.FAIL_TO_CACHE;
 									this.ErrorList.Add(new Exception($"Fail to create a link with successful target to {this.CacheDiskPath}"));
 									throw this.ReturnLastError();
 								}
@@ -585,6 +587,7 @@ namespace CacheDiskLib
 						}
 						catch (Exception e)
 						{
+							this.ItemCacheStatus = CacheStatus.FAIL_TO_CACHE;
 							this.ErrorList.Add(e);
 							Console.WriteLine(e.Message);
 							throw this.ReturnLastError();
@@ -616,8 +619,9 @@ namespace CacheDiskLib
 		{
 			if (this.CacheDiskReg != null && this.CacheType != CacheType.UNKNOWN)
 			{
-				if (this.ItemCached)
+				if (this.ItemCacheStatus == CacheStatus.CACHED)
 				{
+					// Try to remove the link and cache directory:
 					try
 					{
 						DirectoryInfo cacheDir = new DirectoryInfo(this.CacheDiskPath);
@@ -639,6 +643,7 @@ namespace CacheDiskLib
 						{
 							bool failToRestore = false;
 
+							// Try to remove the cache directory:
 							try
 							{
 								if (this.ShowConsoleOutput)
@@ -665,11 +670,14 @@ namespace CacheDiskLib
 										backupDirInfo.Delete(true);
 									}
 								}
+
+								this.ItemCacheStatus = CacheStatus.NOT_CACHED;
 							}
 							catch (Exception e)
 							{
 								failToRestore = true;
 
+								this.ItemCacheStatus = CacheStatus.FAIL_TO_RESTORE;
 								this.ErrorList.Add(e);
 								this.ErrorList.Add(new Exception($"Fail to restore the cached item ({cacheDir.FullName}) on location ({itemDir.FullName})"));
 
@@ -687,6 +695,7 @@ namespace CacheDiskLib
 					}
 					catch (Exception e)
 					{
+						this.ItemCacheStatus = CacheStatus.FAIL_TO_RESTORE;
 						this.ErrorList.Add(e);
 						
 						// If the cached item is missing, revert to the backup
@@ -738,9 +747,10 @@ namespace CacheDiskLib
 						try
 						{
 							// Remove the link available in path:
-							if (Directory.Exists(this.Path))
+							if (this.link != null)
 							{
-								Directory.Delete(this.Path);
+								this.link.Delete();
+								this.link = null;
 							}
 
 							if (this.ShowConsoleOutput)
@@ -771,9 +781,12 @@ namespace CacheDiskLib
 							{
 								cacheDir.Delete(true);
 							}
+
+							this.ItemCacheStatus = CacheStatus.NOT_CACHED;
 						}
 						else
 						{
+							this.ItemCacheStatus = CacheStatus.FAIL_TO_REVERT;
 							this.ErrorList.Add(new Exception($"Fail to revert the backup ({this.BackupPath} to location: {this.Path}. Leaving the cached directory on {this.CacheDiskPath}"));
 						}
 					}

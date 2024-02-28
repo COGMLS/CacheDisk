@@ -7,6 +7,15 @@
 		MOVE,
 	}
 
+	public enum CacheStatus
+	{
+		NOT_CACHED,
+		CACHED,
+		FAIL_TO_CACHE,
+		FAIL_TO_RESTORE,
+		FAIL_TO_REVERT
+	}
+
 	public enum FindCache
 	{
 		Path,
