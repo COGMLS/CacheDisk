@@ -248,6 +248,8 @@ namespace CacheDiskLib
 				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Id}{this.Id.ID}\n");
 				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheDiskPath}{this.CacheDiskPath}\n");
 				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_BackupPath}{this.BackupPath}\n");
+				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Type}{(int)this.CacheType}");
+				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheStatus}{(int)this.CacheStatus}");
 
 				// Verify the recorded data:
 				if (verifyDataIntegrity)
@@ -262,6 +264,8 @@ namespace CacheDiskLib
 						bool IdFieldExist = false;
 						bool CacheDiskPathFieldExist = false;
 						bool BackupPathFieldExist = false;
+						bool CacheTypeFieldExist = false;
+						bool CacheStatusFieldExist = false;
 
 						if (RegStr.Length > 0)
 						{
@@ -318,6 +322,58 @@ namespace CacheDiskLib
 										}
 									}
 								}
+
+								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
+								{
+									CacheTypeFieldExist= true;
+
+									string CacheTypeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
+									int CacheTypeInt = -1;
+
+									if (int.TryParse(CacheTypeStr, out CacheTypeInt))
+									{
+										switch (CacheTypeInt)
+										{
+											case (int)CacheType.UNKNOWN:
+											case (int)CacheType.COPY:
+											case (int)CacheType.MOVE:
+											{
+												break;
+											}
+											default:
+											{
+												this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_WRITE_CORRECT);
+												break;
+											}
+										}
+									}
+								}
+
+								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
+								{
+									CacheStatusFieldExist = true;
+
+									string CacheStatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
+									int CacheStatusInt = -1;
+
+									if (int.TryParse(CacheStatusStr, out CacheStatusInt))
+									{
+										switch (CacheStatusInt)
+										{
+											case (int)CacheType.UNKNOWN:
+											case (int)CacheType.COPY:
+											case (int)CacheType.MOVE:
+											{
+												break;
+											}
+											default:
+											{
+												this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_WRITE_CORRECT);
+												break;
+											}
+										}
+									}
+								}
 							}
 
 							// If one or more properties wasn't found, report the error:
@@ -340,6 +396,16 @@ namespace CacheDiskLib
 							if (!BackupPathFieldExist && this.CacheType == CacheType.COPY)
 							{
 								this.Errors.Add(CacheDiskRegisterErrorCodes.BACKUP_PATH_NOT_FOUND);
+							}
+
+							if (!CacheTypeFieldExist)
+							{
+								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_FOUND);
+							}
+
+							if (!CacheStatusFieldExist)
+							{
+								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_FOUND);
 							}
 						}
 						else
