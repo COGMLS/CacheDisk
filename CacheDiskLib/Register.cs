@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+// TODO: Add cache status to register file.
+// TODO: Add settings control variable for settings changed
+
 namespace CacheDiskLib
 {
 	internal class Register
@@ -16,6 +19,7 @@ namespace CacheDiskLib
 		// Controllers:
 
 		private bool SettingsFileOk = false;
+		private bool SettingsChanged = false;
 
 		// Error List:
 
@@ -28,7 +32,7 @@ namespace CacheDiskLib
 		private string CacheDiskPath;
 		private CacheID Id;
 		private CacheType CacheType = CacheType.UNKNOWN;
-		//private CacheStatus ItemCacheStatus = CacheStatus.NOT_CACHED;
+		private CacheStatus CacheStatus = CacheStatus.NOT_CACHED;
 
 		// Read the inteire register stream and convert it to text
 		private string[] ReadRegStream()
@@ -117,6 +121,108 @@ namespace CacheDiskLib
 						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
 						{
 							this.BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
+						}
+
+						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
+						{
+							string typeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
+							bool typeDataOk = false;
+							int typeInt = -1;
+
+							if (int.TryParse(typeStr, out typeInt))
+							{
+								switch (typeInt)
+								{
+									case (int)CacheType.UNKNOWN:
+									{
+										this.CacheType = CacheType.UNKNOWN;
+										typeDataOk = true;
+										break;
+									}
+									case (int)CacheType.COPY:
+									{
+										this.CacheType = CacheType.COPY;
+										typeDataOk = true;
+										break;
+									}
+									case (int)CacheType.MOVE:
+									{
+										this.CacheType = CacheType.MOVE;
+										typeDataOk = true;
+										break;
+									}
+									default:
+									{
+										break;
+									}
+								}
+							}
+
+							if (!typeDataOk)
+							{
+								if (this.BackupPath.Length > 0)
+								{
+									this.CacheType = CacheType.COPY;
+								}
+								else
+								{
+									this.CacheType = CacheType.MOVE;
+								}
+							}
+						}
+
+						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
+						{
+							string StatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
+							bool StatusDataOk = false;
+							int StatusInt = -1;
+
+							if (int.TryParse(StatusStr, out StatusInt))
+							{
+								switch (StatusInt)
+								{
+									case (int)CacheStatus.NOT_CACHED:
+									{
+										this.CacheStatus = CacheStatus.NOT_CACHED;
+										StatusDataOk = true;
+										break;
+									}
+									case (int)CacheStatus.CACHED:
+									{
+										this.CacheStatus = CacheStatus.CACHED;
+										StatusDataOk = true;
+										break;
+									}
+									case (int)CacheStatus.FAIL_TO_CACHE:
+									{
+										this.CacheStatus = CacheStatus.FAIL_TO_CACHE;
+										StatusDataOk = true;
+										break;
+									}
+									case (int)CacheStatus.FAIL_TO_RESTORE:
+									{
+										this.CacheStatus = CacheStatus.FAIL_TO_RESTORE;
+										StatusDataOk = true;
+										break;
+									}
+									case (int)CacheStatus.FAIL_TO_REVERT:
+									{
+										this.CacheStatus = CacheStatus.FAIL_TO_REVERT;
+										StatusDataOk = true;
+										break;
+									}
+									default:
+									{
+										this.CacheStatus = CacheStatus.UNKNOWN;
+										break;
+									}
+								}
+							}
+
+							if (!StatusDataOk)
+							{
+								this.CacheStatus = CacheStatus.UNKNOWN;
+							}
 						}
 					}
 				}
@@ -451,25 +557,25 @@ namespace CacheDiskLib
 			return this.CacheType.ToString();
 		}
 
-		//public CacheStatus GetItemCached()
-		//{
-		//	return this.ItemCacheStatus;
-		//}
+		public CacheStatus GetItemCached()
+		{
+			return this.CacheStatus;
+		}
 
-		//public string GetItemCachedStr()
-		//{
-		//	return this.ItemCacheStatus.ToString();
-		//}
+		public string GetItemCachedStr()
+		{
+			return this.CacheStatus.ToString();
+		}
 
 		public bool IsRegisterOk()
 		{
 			return this.SettingsFileOk;
 		}
 
-		//public bool IsCachedItemOk()
-		//{
-		//	return this.ItemCacheStatus && CacheStatus.CACHED;
-		//}
+		public bool IsCachedItemOk()
+		{
+			return this.CacheStatus == CacheStatus.CACHED;
+		}
 
 		public List<CacheDiskRegisterErrorCodes> GetRegisterErrors()
 		{
