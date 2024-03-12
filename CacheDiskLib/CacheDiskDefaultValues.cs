@@ -20,5 +20,6 @@ namespace CacheDiskLib
 		public static readonly string RegisterFileField_CacheDiskPath = "CacheDiskPath=";
 		public static readonly string RegisterFileField_BackupPath = "BackupPath=";
 		public static readonly string RegisterFileField_Type = "Type=";
+		public static readonly string RegisterFileField_CacheStatus = "Status=";
 	}
 }
