@@ -9,6 +9,7 @@
 
 	public enum CacheStatus
 	{
+		UNKNOWN,
 		NOT_CACHED,
 		CACHED,
 		FAIL_TO_CACHE,
