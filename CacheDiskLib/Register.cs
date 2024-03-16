@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-// TODO: Add cache status to register file.
 // TODO: Add settings control variable for settings changed
 
 namespace CacheDiskLib
@@ -593,26 +592,46 @@ namespace CacheDiskLib
 			}
 		}
 
+		/// <summary>
+		/// Get the path to the item
+		/// </summary>
+		/// <returns></returns>
 		public string GetPath()
 		{
 			return this.Path;
 		}
 
+		/// <summary>
+		/// Get the path to the backup
+		/// </summary>
+		/// <returns>Return the path to the backup path if the CacheType is defined as COPY. Otherwise will return null.</returns>
 		public string GetBackupPath()
 		{
 			return this.BackupPath;
 		}
 
+		/// <summary>
+		/// Get the cached item path
+		/// </summary>
+		/// <returns></returns>
 		public string GetCacheDiskPath()
 		{
 			return this.CacheDiskPath;
 		}
 
+		/// <summary>
+		/// Get the CacheID
+		/// </summary>
+		/// <returns></returns>
 		public CacheID GetId()
 		{
 			return this.Id;
 		}
 
+		/// <summary>
+		/// Get the type of Cache Item
+		/// </summary>
+		/// <returns></returns>
 		public CacheType GetCacheType()
 		{
 			return this.CacheType;
@@ -623,6 +642,10 @@ namespace CacheDiskLib
 			return this.CacheType.ToString();
 		}
 
+		/// <summary>
+		/// Get the cached item status
+		/// </summary>
+		/// <returns></returns>
 		public CacheStatus GetItemCached()
 		{
 			return this.CacheStatus;
@@ -633,6 +656,10 @@ namespace CacheDiskLib
 			return this.CacheStatus.ToString();
 		}
 
+		/// <summary>
+		/// Check if the register data if ok
+		/// </summary>
+		/// <returns></returns>
 		public bool IsRegisterOk()
 		{
 			return this.SettingsFileOk;
@@ -643,14 +670,70 @@ namespace CacheDiskLib
 			return this.CacheStatus == CacheStatus.CACHED;
 		}
 
+		/// <summary>
+		/// Get the error list from register object
+		/// </summary>
+		/// <returns></returns>
 		public List<CacheDiskRegisterErrorCodes> GetRegisterErrors()
 		{
 			return this.Errors;
 		}
 
+		/// <summary>
+		/// Refresh the information in register object
+		/// </summary>
+		/// <returns></returns>
 		public bool RefreshInfo()
 		{
 			return false;
+		}
+
+		/// <summary>
+		/// Refresh the register object information and save it in register file
+		/// </summary>
+		/// <param name="path"></param>
+		/// <param name="cacheDiskPath"></param>
+		/// <param name="backupDiskPath"></param>
+		/// <param name="cacheStatus"></param>
+		/// <returns>Return true if successful apply the new information in to object and save them in to the register file.</returns>
+		public bool RefreshInfo(string path, string cacheDiskPath, string? backupDiskPath, CacheStatus cacheStatus)
+		{
+			string _path = this.Path;
+			string _backupPath = this.BackupPath;
+			string _cacheDiskPath = this.CacheDiskPath;
+			CacheStatus _cacheStatus = this.CacheStatus;
+
+			try
+			{
+				this.Path = path;
+				this.CacheDiskPath = cacheDiskPath;
+
+				if (backupDiskPath == null)
+				{
+					this.BackupPath = "";
+				}
+				else
+				{
+					this.BackupPath = backupDiskPath;
+				}
+
+				this.CacheStatus = cacheStatus;
+
+				this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open, FileAccess.Write);
+				this.WriteRegister(true);
+				this.SettingsFileStream.Close();
+
+				return true;
+			}
+			catch (Exception e)
+			{
+				this.Path = _path;
+				this.CacheDiskPath = _cacheDiskPath;
+				this.BackupPath = _backupPath;
+				this.CacheStatus = _cacheStatus;
+
+				return false;
+			}
 		}
 	}
 }
