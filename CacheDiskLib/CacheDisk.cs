@@ -596,6 +596,12 @@ namespace CacheDiskLib
 							throw this.ReturnLastError();
 						}
 					}
+
+					// Update the register object:
+					if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+					{
+						this.ErrorList.Add(new Exception("Fail to update the register object"));
+					}
 				}
 			}
 			else
@@ -712,6 +718,12 @@ namespace CacheDiskLib
 				{
 					this.ErrorList.Add(new Exception($"Item ({this.CacheDiskPath}) is not cached to be restored to original location ({this.Path})"));
 				}
+
+				// Update the register object:
+				if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+				{
+					this.ErrorList.Add(new Exception("Fail to update the register object"));
+				}
 			}
 			else
 			{
@@ -798,6 +810,12 @@ namespace CacheDiskLib
 				{
 					this.ErrorList.Add(new Exception("Only in COPY mode is possible revert the cache item"));
 				}
+
+				// Update the register object:
+				if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+				{
+					this.ErrorList.Add(new Exception("Fail to update the register object"));
+				}
 			}
 			else
 			{
@@ -816,26 +834,37 @@ namespace CacheDiskLib
 			}
 		}
 
+		/// <summary>
+		/// Define if the operations will appear into the console
+		/// </summary>
+		/// <param name="activeOutput">True to define the console output</param>
 		public void SetConsoleOutputOperation(bool activeOutput)
 		{
 			this.ShowConsoleOutput = activeOutput;
 		}
 
+		/// <summary>
+		/// Define to replicate the files in the operations
+		/// </summary>
+		/// <param name="replicateFileAttributes"></param>
 		public void SetReplicateFileAttributes(bool replicateFileAttributes)
 		{
 			this.replicateFileAttributes = replicateFileAttributes;
 		}
 
+		/// <summary>
+		/// Define to replicate the access control to files and directories in cached item.
+		/// </summary>
+		/// <param name="replicateAccessControl"></param>
+		/// <remarks>The user need have rights to apply the access controls</remarks>
 		public void SetReplicateAccessControl(bool replicateAccessControl)
 		{
 			this.replicateAccessControl = replicateAccessControl;
 		}
 
-		public Exception[] GetErrors()
-		{
-			return this.ErrorList.ToArray();
-		}
-
+		/// <summary>
+		/// Clean the errors registered
+		/// </summary>
 		public void CleanErrors()
 		{
 			this.ErrorList.Clear();
