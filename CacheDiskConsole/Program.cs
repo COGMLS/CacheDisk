@@ -47,6 +47,21 @@ namespace CacheDiskConsole
 			cache.CacheItem();
 
 			cache.RestoreCache();
+
+			bool remReg = false;
+			string? usr = "";
+
+			while ((usr != "Y" || usr != "y") && (usr != "N" || usr != "n"))
+			{
+				usr = "";
+				Console.Write("Remove Cache Reg? (Y/N): ");
+				usr = Console.ReadLine();
+			}
+
+			if (remReg)
+			{
+				cache.RemoveCache();
+			}
 #endif // DEBUG
 
 			Console.WriteLine("End of the test");
