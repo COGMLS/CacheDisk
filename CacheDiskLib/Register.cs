@@ -13,7 +13,7 @@ namespace CacheDiskLib
 
 		private string SettingsFilePath;
 		private FileInfo SettingsFileInfo;
-		private FileStream SettingsFileStream;
+		private FileStream? SettingsFileStream;
 
 		// Controllers:
 
@@ -37,27 +37,35 @@ namespace CacheDiskLib
 		private string[] ReadRegStream()
 		{
 			List<string> RegStr = new List<string>();
-			List<byte> buffer = new List<byte>();
-			
-			this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
 
-			// The register file define each configuration by line:
-
-			for (int i = 0; i < this.SettingsFileStream.Length; i++)
+			if (this.SettingsFileStream != null)
 			{
-				byte[] b = new byte[1];
-				this.SettingsFileStream.Read(b, 0, b.Length);
+				List<byte> buffer = new List<byte>();
+			
+				this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
 
-				if (b[0] == '\n')
+				// The register file define each configuration by line:
+
+				for (int i = 0; i < this.SettingsFileStream.Length; i++)
 				{
-					string s = new UTF8Encoding(false).GetString(buffer.ToArray());
-					RegStr.Add(s);
-					buffer.Clear();
+					byte[] b = new byte[1];
+					this.SettingsFileStream.Read(b, 0, b.Length);
+
+					if (b[0] == '\n')
+					{
+						string s = new UTF8Encoding(false).GetString(buffer.ToArray());
+						RegStr.Add(s);
+						buffer.Clear();
+					}
+					else
+					{
+						buffer.Add(b[0]);
+					}
 				}
-				else
-				{
-					buffer.Add(b[0]);
-				}
+			}
+			else
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_NOT_OPENED);
 			}
 
 			// Leave the FileStream open for other operations.
@@ -71,359 +79,454 @@ namespace CacheDiskLib
 		{
 			// This function write the value on current file pointer position
 
-			if (!value.EndsWith('\n'))
+			if (this.SettingsFileStream != null)
 			{
-				value += '\n';
-			}
+				if (!value.EndsWith('\n'))
+				{
+					value += '\n';
+				}
 
-			byte[] buffer = new UTF8Encoding(false).GetBytes(value);
-			this.SettingsFileStream.Write(buffer, 0, buffer.Length);
+				byte[] buffer = new UTF8Encoding(false).GetBytes(value);
+				this.SettingsFileStream.Write(buffer, 0, buffer.Length);
+			}
+			else
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_NOT_OPENED);
+			}
 		}
 
 		// Read the register file and apply to the object variables the correct values
 		private void ReadRegister()
 		{
-			if (this.SettingsFileStream.CanRead)
+			if (this.SettingsFileStream != null)
 			{
-				this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
-
-				string[] RegStr = this.ReadRegStream();
-
-				if (RegStr.Length > 0)
+				if (this.SettingsFileStream.CanRead)
 				{
-					for (int i = 0; i < this.SettingsFileStream.Length; i++)
+					this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
+
+					string[] RegStr = this.ReadRegStream();
+
+					if (RegStr.Length > 0)
 					{
-						string r = RegStr[i];
-
-						// If the new line exist, remove it
-						if (r.EndsWith('\n'))
+						for (int i = 0; i < this.SettingsFileStream.Length; i++)
 						{
-							r = r.Remove(r.Length - 1);
-						}
+							string r = RegStr[i];
 
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Path))
-						{
-							this.Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
-						}
-
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Id))
-						{
-							string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
-							this.Id = new CacheID(Id);
-						}
-						
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath))
-						{
-							this.CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
-						}
-
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
-						{
-							this.BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
-						}
-
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
-						{
-							string typeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
-							bool typeDataOk = false;
-							int typeInt = -1;
-
-							if (int.TryParse(typeStr, out typeInt))
+							// If the new line exist, remove it
+							if (r.EndsWith('\n'))
 							{
-								switch (typeInt)
+								r = r.Remove(r.Length - 1);
+							}
+
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Path))
+							{
+								this.Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
+							}
+
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Id))
+							{
+								string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
+								this.Id = new CacheID(Id);
+							}
+						
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath))
+							{
+								this.CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
+							}
+
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
+							{
+								this.BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
+							}
+
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
+							{
+								string typeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
+								bool typeDataOk = false;
+								int typeInt = -1;
+
+								if (int.TryParse(typeStr, out typeInt))
 								{
-									case (int)CacheType.UNKNOWN:
+									switch (typeInt)
 									{
-										this.CacheType = CacheType.UNKNOWN;
-										typeDataOk = true;
-										break;
+										case (int)CacheType.UNKNOWN:
+										{
+											this.CacheType = CacheType.UNKNOWN;
+											typeDataOk = true;
+											break;
+										}
+										case (int)CacheType.COPY:
+										{
+											this.CacheType = CacheType.COPY;
+											typeDataOk = true;
+											break;
+										}
+										case (int)CacheType.MOVE:
+										{
+											this.CacheType = CacheType.MOVE;
+											typeDataOk = true;
+											break;
+										}
+										default:
+										{
+											break;
+										}
 									}
-									case (int)CacheType.COPY:
+								}
+
+								if (!typeDataOk)
+								{
+									if (this.BackupPath.Length > 0)
 									{
 										this.CacheType = CacheType.COPY;
-										typeDataOk = true;
-										break;
 									}
-									case (int)CacheType.MOVE:
+									else
 									{
 										this.CacheType = CacheType.MOVE;
-										typeDataOk = true;
-										break;
-									}
-									default:
-									{
-										break;
 									}
 								}
 							}
 
-							if (!typeDataOk)
+							if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
 							{
-								if (this.BackupPath.Length > 0)
+								string StatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
+								bool StatusDataOk = false;
+								int StatusInt = -1;
+
+								if (int.TryParse(StatusStr, out StatusInt))
 								{
-									this.CacheType = CacheType.COPY;
+									switch (StatusInt)
+									{
+										case (int)CacheStatus.NOT_CACHED:
+										{
+											this.CacheStatus = CacheStatus.NOT_CACHED;
+											StatusDataOk = true;
+											break;
+										}
+										case (int)CacheStatus.CACHED:
+										{
+											this.CacheStatus = CacheStatus.CACHED;
+											StatusDataOk = true;
+											break;
+										}
+										case (int)CacheStatus.FAIL_TO_CACHE:
+										{
+											this.CacheStatus = CacheStatus.FAIL_TO_CACHE;
+											StatusDataOk = true;
+											break;
+										}
+										case (int)CacheStatus.FAIL_TO_RESTORE:
+										{
+											this.CacheStatus = CacheStatus.FAIL_TO_RESTORE;
+											StatusDataOk = true;
+											break;
+										}
+										case (int)CacheStatus.FAIL_TO_REVERT:
+										{
+											this.CacheStatus = CacheStatus.FAIL_TO_REVERT;
+											StatusDataOk = true;
+											break;
+										}
+										default:
+										{
+											this.CacheStatus = CacheStatus.UNKNOWN;
+											break;
+										}
+									}
 								}
-								else
+
+								if (!StatusDataOk)
 								{
-									this.CacheType = CacheType.MOVE;
+									this.CacheStatus = CacheStatus.UNKNOWN;
 								}
 							}
 						}
-
-						if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
-						{
-							string StatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
-							bool StatusDataOk = false;
-							int StatusInt = -1;
-
-							if (int.TryParse(StatusStr, out StatusInt))
-							{
-								switch (StatusInt)
-								{
-									case (int)CacheStatus.NOT_CACHED:
-									{
-										this.CacheStatus = CacheStatus.NOT_CACHED;
-										StatusDataOk = true;
-										break;
-									}
-									case (int)CacheStatus.CACHED:
-									{
-										this.CacheStatus = CacheStatus.CACHED;
-										StatusDataOk = true;
-										break;
-									}
-									case (int)CacheStatus.FAIL_TO_CACHE:
-									{
-										this.CacheStatus = CacheStatus.FAIL_TO_CACHE;
-										StatusDataOk = true;
-										break;
-									}
-									case (int)CacheStatus.FAIL_TO_RESTORE:
-									{
-										this.CacheStatus = CacheStatus.FAIL_TO_RESTORE;
-										StatusDataOk = true;
-										break;
-									}
-									case (int)CacheStatus.FAIL_TO_REVERT:
-									{
-										this.CacheStatus = CacheStatus.FAIL_TO_REVERT;
-										StatusDataOk = true;
-										break;
-									}
-									default:
-									{
-										this.CacheStatus = CacheStatus.UNKNOWN;
-										break;
-									}
-								}
-							}
-
-							if (!StatusDataOk)
-							{
-								this.CacheStatus = CacheStatus.UNKNOWN;
-							}
-						}
+					}
+					else
+					{
+						this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_EMPTY);
 					}
 				}
 				else
 				{
-					this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_EMPTY);
+					this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_READ);
 				}
 			}
 			else
 			{
-				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_READ);
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_NOT_OPENED);
 			}
 		}
 
 		// Write the configurations on register file
 		private void WriteRegister(bool verifyDataIntegrity)
 		{
-			if (this.SettingsFileStream.CanWrite)
+			if (this.SettingsFileStream != null)
 			{
-				this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
-
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Path}{this.Path}\n");
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Id}{this.Id.ID}\n");
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheDiskPath}{this.CacheDiskPath}\n");
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_BackupPath}{this.BackupPath}\n");
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Type}{(int)this.CacheType}");
-				this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheStatus}{(int)this.CacheStatus}");
-
-				// Verify the recorded data:
-				if (verifyDataIntegrity)
+				if (this.SettingsFileStream.CanWrite)
 				{
-					if (this.SettingsFileStream.CanRead)
+					this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
+
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Path}{this.Path}\n");
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Id}{this.Id.ID}\n");
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheDiskPath}{this.CacheDiskPath}\n");
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_BackupPath}{this.BackupPath}\n");
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_Type}{(int)this.CacheType}");
+					this.WriteRegStream($"{CacheDiskDefaultValues.RegisterFileField_CacheStatus}{(int)this.CacheStatus}");
+
+					// Verify the recorded data:
+					if (verifyDataIntegrity)
 					{
-						this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
-
-						string[] RegStr = this.ReadRegStream();
-
-						bool PathFieldExist = false;
-						bool IdFieldExist = false;
-						bool CacheDiskPathFieldExist = false;
-						bool BackupPathFieldExist = false;
-						bool CacheTypeFieldExist = false;
-						bool CacheStatusFieldExist = false;
-
-						if (RegStr.Length > 0)
+						if (this.SettingsFileStream.CanRead)
 						{
-							// Check for each field if the data was recorded correctly
-							foreach (string r in RegStr)
+							this.SettingsFileStream.Seek(0, SeekOrigin.Begin);
+
+							string[] RegStr = this.ReadRegStream();
+
+							bool PathFieldExist = false;
+							bool IdFieldExist = false;
+							bool CacheDiskPathFieldExist = false;
+							bool BackupPathFieldExist = false;
+							bool CacheTypeFieldExist = false;
+							bool CacheStatusFieldExist = false;
+
+							if (RegStr.Length > 0)
 							{
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Path))
+								// Check for each field if the data was recorded correctly
+								foreach (string r in RegStr)
 								{
-									PathFieldExist = true;
-
-									string Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
-
-									if (Path != this.Path)
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Path))
 									{
-										this.Errors.Add(CacheDiskRegisterErrorCodes.PATH_NOT_WRITE_CORRECT);
-									}
-								}
+										PathFieldExist = true;
 
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Id))
-								{
-									IdFieldExist = true;
+										string Path = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Path.Length);
 
-									string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
-
-									if (Id != this.Id.ID)
-									{
-										this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_WRITE_CORRECT);
-									}
-								}
-
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath))
-								{
-									CacheDiskPathFieldExist= true;
-
-									string CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
-
-									if (CacheDiskPath != this.CacheDiskPath)
-									{
-										this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_DISK_PATH_NOT_WRITE_CORRECT);
-									}
-								}
-
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
-								{
-									BackupPathFieldExist= true;
-
-									string BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
-
-									if (this.BackupPath.Length > 0 && this.CacheType == CacheType.COPY)
-									{
-										if (BackupPath != this.BackupPath)
+										if (Path != this.Path)
 										{
-											this.Errors.Add(CacheDiskRegisterErrorCodes.BACKUP_PATH_NOT_WRITE_CORRECT);
+											this.Errors.Add(CacheDiskRegisterErrorCodes.PATH_NOT_WRITE_CORRECT);
+										}
+									}
+
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Id))
+									{
+										IdFieldExist = true;
+
+										string Id = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Id.Length);
+
+										if (Id != this.Id.ID)
+										{
+											this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_WRITE_CORRECT);
+										}
+									}
+
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheDiskPath))
+									{
+										CacheDiskPathFieldExist= true;
+
+										string CacheDiskPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheDiskPath.Length);
+
+										if (CacheDiskPath != this.CacheDiskPath)
+										{
+											this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_DISK_PATH_NOT_WRITE_CORRECT);
+										}
+									}
+
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_BackupPath))
+									{
+										BackupPathFieldExist= true;
+
+										string BackupPath = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_BackupPath.Length);
+
+										if (this.BackupPath.Length > 0 && this.CacheType == CacheType.COPY)
+										{
+											if (BackupPath != this.BackupPath)
+											{
+												this.Errors.Add(CacheDiskRegisterErrorCodes.BACKUP_PATH_NOT_WRITE_CORRECT);
+											}
+										}
+									}
+
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
+									{
+										CacheTypeFieldExist= true;
+
+										string CacheTypeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
+										int CacheTypeInt = -1;
+
+										if (int.TryParse(CacheTypeStr, out CacheTypeInt))
+										{
+											switch (CacheTypeInt)
+											{
+												case (int)CacheType.UNKNOWN:
+												case (int)CacheType.COPY:
+												case (int)CacheType.MOVE:
+												{
+													break;
+												}
+												default:
+												{
+													this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_WRITE_CORRECT);
+													break;
+												}
+											}
+										}
+									}
+
+									if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
+									{
+										CacheStatusFieldExist = true;
+
+										string CacheStatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
+										int CacheStatusInt = -1;
+
+										if (int.TryParse(CacheStatusStr, out CacheStatusInt))
+										{
+											switch (CacheStatusInt)
+											{
+												case (int)CacheType.UNKNOWN:
+												case (int)CacheType.COPY:
+												case (int)CacheType.MOVE:
+												{
+													break;
+												}
+												default:
+												{
+													this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_WRITE_CORRECT);
+													break;
+												}
+											}
 										}
 									}
 								}
 
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_Type))
+								// If one or more properties wasn't found, report the error:
+
+								if (!PathFieldExist)
 								{
-									CacheTypeFieldExist= true;
-
-									string CacheTypeStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_Type.Length);
-									int CacheTypeInt = -1;
-
-									if (int.TryParse(CacheTypeStr, out CacheTypeInt))
-									{
-										switch (CacheTypeInt)
-										{
-											case (int)CacheType.UNKNOWN:
-											case (int)CacheType.COPY:
-											case (int)CacheType.MOVE:
-											{
-												break;
-											}
-											default:
-											{
-												this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_WRITE_CORRECT);
-												break;
-											}
-										}
-									}
+									this.Errors.Add(CacheDiskRegisterErrorCodes.PATH_NOT_FOUND);
 								}
 
-								if (r.StartsWith(CacheDiskDefaultValues.RegisterFileField_CacheStatus))
+								if (!IdFieldExist)
 								{
-									CacheStatusFieldExist = true;
+									this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_FOUND);
+								}
 
-									string CacheStatusStr = r.Remove(0, CacheDiskDefaultValues.RegisterFileField_CacheStatus.Length);
-									int CacheStatusInt = -1;
+								if (!CacheDiskPathFieldExist)
+								{
+									this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_DISK_PATH_NOT_FOUND);
+								}
 
-									if (int.TryParse(CacheStatusStr, out CacheStatusInt))
-									{
-										switch (CacheStatusInt)
-										{
-											case (int)CacheType.UNKNOWN:
-											case (int)CacheType.COPY:
-											case (int)CacheType.MOVE:
-											{
-												break;
-											}
-											default:
-											{
-												this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_WRITE_CORRECT);
-												break;
-											}
-										}
-									}
+								if (!BackupPathFieldExist && this.CacheType == CacheType.COPY)
+								{
+									this.Errors.Add(CacheDiskRegisterErrorCodes.BACKUP_PATH_NOT_FOUND);
+								}
+
+								if (!CacheTypeFieldExist)
+								{
+									this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_FOUND);
+								}
+
+								if (!CacheStatusFieldExist)
+								{
+									this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_FOUND);
 								}
 							}
-
-							// If one or more properties wasn't found, report the error:
-
-							if (!PathFieldExist)
+							else
 							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.PATH_NOT_FOUND);
-							}
-
-							if (!IdFieldExist)
-							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_ID_NOT_FOUND);
-							}
-
-							if (!CacheDiskPathFieldExist)
-							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_DISK_PATH_NOT_FOUND);
-							}
-
-							if (!BackupPathFieldExist && this.CacheType == CacheType.COPY)
-							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.BACKUP_PATH_NOT_FOUND);
-							}
-
-							if (!CacheTypeFieldExist)
-							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_TYPE_NOT_FOUND);
-							}
-
-							if (!CacheStatusFieldExist)
-							{
-								this.Errors.Add(CacheDiskRegisterErrorCodes.CACHE_STATUS_NOT_FOUND);
+								this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_EMPTY);
 							}
 						}
 						else
 						{
-							this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_EMPTY);
+							this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_CHECK_RECORD_DATA);
 						}
 					}
-					else
-					{
-						this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_CHECK_RECORD_DATA);
-					}
+				}
+				else
+				{
+					this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_WRITE);
 				}
 			}
 			else
 			{
-				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_WRITE);
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_NOT_OPENED);
 			}
 		}
 
+		/// <summary>
+		/// Manage the register file and stream to open with parameters and close
+		/// </summary>
+		/// <param name="open"></param>
+		/// <param name="mode"></param>
+		/// <param name="useFileAccess"></param>
+		/// <param name="access"></param>
+		/// <returns>True is was successful. False if an exception happen.</returns>
+		private bool MngRegister(bool open, FileMode mode = FileMode.Open, bool useFileAccess = false, FileAccess access = FileAccess.ReadWrite)
+		{
+			if (open)
+			{
+				try
+				{
+					if (this.SettingsFileStream != null)
+					{
+						return false;
+					}
+
+					if (this.SettingsFileInfo.Exists)
+					{
+						if (useFileAccess)
+						{
+							this.SettingsFileStream = this.SettingsFileInfo.Open(mode, access);
+						}
+						else
+						{
+							this.SettingsFileStream = this.SettingsFileInfo.Open(mode);
+						}
+					}
+					else
+					{
+						try
+						{
+							this.SettingsFileStream = this.SettingsFileInfo.Create();
+						}
+						catch (Exception e)
+						{
+							Console.WriteLine(e);
+							return false;
+						}
+					}
+
+					return true;
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine(e);
+					return false;
+				}
+			}
+			else
+			{
+				try
+				{
+					if (this.SettingsFileStream == null)
+					{
+						return false;
+					}
+
+					//this.SettingsFileStream.Dispose();
+					this.SettingsFileStream.Close();
+					this.SettingsFileStream = null;
+
+					return true;
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine(e);
+					return false;
+				}
+			}
+		}
+		
 		/// <summary>
 		/// Create a Register in Cache Disk LocalAppData
 		/// </summary>
@@ -457,19 +560,19 @@ namespace CacheDiskLib
 			{
 				if (!this.SettingsFileInfo.Exists)
 				{
-					this.SettingsFileStream = this.SettingsFileInfo.Create();
-
+					//this.SettingsFileStream = this.SettingsFileInfo.Create();
+					this.MngRegister(true, FileMode.Create);
 					this.WriteRegister(true);
-
-					this.SettingsFileStream.Close();
+					this.MngRegister(false);
+					//this.SettingsFileStream.Close();
 				}
 				else
 				{
-					this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
-				
+					//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
+					this.MngRegister(true, FileMode.Open);
 					this.ReadRegister();
-
-					this.SettingsFileStream.Close();
+					this.MngRegister(false);
+					//this.SettingsFileStream.Close();
 				}
 			}
 			catch (Exception e)
@@ -523,19 +626,19 @@ namespace CacheDiskLib
 			{
 				if (!this.SettingsFileInfo.Exists)
 				{
-					this.SettingsFileStream = this.SettingsFileInfo.Create();
-
+					//this.SettingsFileStream = this.SettingsFileInfo.Create();
+					this.MngRegister(true, FileMode.Create);
 					this.WriteRegister(true);
-
-					this.SettingsFileStream.Close();
+					this.MngRegister(false);
+					//this.SettingsFileStream.Close();
 				}
 				else
 				{
-					this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
-
+					//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
+					this.MngRegister(true, FileMode.Open);
 					this.ReadRegister();
-
-					this.SettingsFileStream.Close();
+					this.MngRegister(false);
+					//this.SettingsFileStream.Close();
 				}
 			}
 			catch (Exception e)
@@ -570,11 +673,11 @@ namespace CacheDiskLib
 
 				if (this.SettingsFileInfo.Exists)
 				{
-					this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
-
+					//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open);
+					this.MngRegister(true, FileMode.Open);
 					this.ReadRegister();
-
-					this.SettingsFileStream.Close();
+					this.MngRegister(false);
+					//this.SettingsFileStream.Close();
 
 					if (this.Errors.Count == 0)
 					{
@@ -646,12 +749,12 @@ namespace CacheDiskLib
 		/// Get the cached item status
 		/// </summary>
 		/// <returns></returns>
-		public CacheStatus GetItemCached()
+		public CacheStatus GetCachedStatus()
 		{
 			return this.CacheStatus;
 		}
 
-		public string GetItemCachedStr()
+		public string GetCacheStatusStr()
 		{
 			return this.CacheStatus.ToString();
 		}
@@ -685,7 +788,51 @@ namespace CacheDiskLib
 		/// <returns></returns>
 		public bool RefreshInfo()
 		{
-			return false;
+			try
+			{
+				//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open, FileAccess.Read);
+				this.MngRegister(true, FileMode.Open, true, FileAccess.Read);
+				this.ReadRegister();
+				this.MngRegister(false);
+				//this.SettingsFileStream.Close();
+
+				return true;
+			}
+			catch (Exception e)
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_OPEN);
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Refresh the register object information and save it in register file
+		/// </summary>
+		/// <param name="cacheStatus"></param>
+		/// <returns>Return true if successful apply the new information in to object and save them in to the register file.</returns>
+		public bool RefreshInfo(CacheStatus cacheStatus)
+		{
+			CacheStatus _cacheStatus = this.CacheStatus;
+
+			try
+			{
+				this.CacheStatus = cacheStatus;
+
+				//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open, FileAccess.Write);
+				this.MngRegister(true, FileMode.Open, true, FileAccess.Write);
+				this.WriteRegister(true);
+				this.MngRegister(false);
+				//this.SettingsFileStream.Close();
+
+				return true;
+			}
+			catch (Exception e)
+			{
+				this.CacheStatus = _cacheStatus;
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_OPEN);
+
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -719,9 +866,11 @@ namespace CacheDiskLib
 
 				this.CacheStatus = cacheStatus;
 
-				this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open, FileAccess.Write);
+				//this.SettingsFileStream = this.SettingsFileInfo.Open(FileMode.Open, FileAccess.Write);
+				this.MngRegister(true, FileMode.Open, true, FileAccess.Write);
 				this.WriteRegister(true);
-				this.SettingsFileStream.Close();
+				this.MngRegister(false);
+				//this.SettingsFileStream.Close();
 
 				return true;
 			}
@@ -732,7 +881,49 @@ namespace CacheDiskLib
 				this.BackupPath = _backupPath;
 				this.CacheStatus = _cacheStatus;
 
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_OPEN);
+
 				return false;
+			}
+		}
+
+		/// <summary>
+		/// Delete the register file
+		/// </summary>
+		public void RemoveRegister()
+		{
+			if (this.SettingsFileStream != null)
+			{
+				try
+				{
+					if (this.SettingsFileStream.CanRead || this.SettingsFileStream.CanWrite)
+					{
+						//this.SettingsFileStream.Close();
+						this.MngRegister(false);
+					}
+				}
+				catch (Exception e)
+				{
+					this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_CLOSE);
+				}
+			}
+
+			this.SettingsFileInfo.Refresh();
+
+			if (this.SettingsFileInfo.Exists)
+			{
+				try
+				{
+					this.SettingsFileInfo.Delete();
+				}
+				catch (Exception e)
+				{
+					this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_CANT_BE_DELETED);
+				}
+			}
+			else
+			{
+				this.Errors.Add(CacheDiskRegisterErrorCodes.REGISTER_FILE_MISSING);
 			}
 		}
 	}
