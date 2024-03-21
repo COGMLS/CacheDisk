@@ -94,6 +94,7 @@ namespace CacheDiskLib
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
 				this.CacheType = this.CacheDiskReg.GetCacheType();
 				this.Id = this.CacheDiskReg.GetId();
+				this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
 
 				if (this.CacheDiskReg == null)
 				{
@@ -235,6 +236,7 @@ namespace CacheDiskLib
 				this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
 				this.CacheType = this.CacheDiskReg.GetCacheType();
 				this.Id = this.CacheDiskReg.GetId();
+				this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
 
 				if (this.CacheDiskReg == null)
 				{
@@ -391,6 +393,7 @@ namespace CacheDiskLib
 
 				this.CacheType = this.CacheDiskReg.GetCacheType();
 				this.Id = this.CacheDiskReg.GetId();
+				this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
 
 				if (this.CacheDiskReg == null)
 				{
@@ -598,7 +601,7 @@ namespace CacheDiskLib
 					}
 
 					// Update the register object:
-					if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+					if (!this.CacheDiskReg.RefreshInfo(this.ItemCacheStatus))
 					{
 						this.ErrorList.Add(new Exception("Fail to update the register object"));
 					}
@@ -720,7 +723,7 @@ namespace CacheDiskLib
 				}
 
 				// Update the register object:
-				if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+				if (!this.CacheDiskReg.RefreshInfo(this.ItemCacheStatus))
 				{
 					this.ErrorList.Add(new Exception("Fail to update the register object"));
 				}
@@ -812,7 +815,7 @@ namespace CacheDiskLib
 				}
 
 				// Update the register object:
-				if (!this.CacheDiskReg.RefreshInfo(this.Path, this.CacheDiskPath, this.BackupPath, this.ItemCacheStatus))
+				if (!this.CacheDiskReg.RefreshInfo(this.ItemCacheStatus))
 				{
 					this.ErrorList.Add(new Exception("Fail to update the register object"));
 				}
@@ -868,6 +871,22 @@ namespace CacheDiskLib
 		public void CleanErrors()
 		{
 			this.ErrorList.Clear();
+		}
+
+		/// <summary>
+		/// Remove Cache Disk from database
+		/// </summary>
+		/// <remarks>NOTE: This method remove the register file without restoring the cached item. Use only when the item is not cached!</remarks>
+		public void RemoveCache()
+		{
+			if (this.CacheDiskReg != null)
+			{
+				this.CacheDiskReg.RemoveRegister();
+			}
+			else
+			{
+				this.ErrorList.Add(new Exception("Register file doesn't exist"));
+			}
 		}
 	}
 }
