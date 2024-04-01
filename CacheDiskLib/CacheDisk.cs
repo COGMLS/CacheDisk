@@ -12,7 +12,7 @@ namespace CacheDiskLib
 		private bool replicateFileAttributes = true;
 		private bool UseJunction = false;
 		private bool ShowConsoleOutput = false;
-		private FileSystemInfo? link = null;
+		private string? link = null;
 
 		public string Path;
 		public string BackupPath;
@@ -30,6 +30,41 @@ namespace CacheDiskLib
 			else
 			{
 				return this.ErrorList[this.ErrorList.Count - 1];
+			}
+		}
+
+		/// <summary>
+		/// Resolve the link status.
+		/// </summary>
+		/// <returns>1 if the Path is a link (Cached directory). 0 if the path is a directory. -1 for any exception or doesn't exist.</returns>
+		private int ResolveLink()
+		{
+			try
+			{
+				DirectoryInfo tmpLink = new DirectoryInfo(this.Path);
+
+				if (tmpLink.Exists)
+				{
+					if (tmpLink.Attributes.HasFlag(FileAttributes.Directory) && tmpLink.Attributes.HasFlag(FileAttributes.ReparsePoint))
+					{
+						this.link = tmpLink.FullName;
+						return 1;
+					}
+
+					this.link = null;
+					return 0;
+				}
+				else
+				{
+					this.link = null;
+					return -1;
+				}
+			}
+			catch (Exception e)
+			{
+				this.link = null;
+				this.ErrorList.Add(e);
+				return -1;
 			}
 		}
 
@@ -100,6 +135,33 @@ namespace CacheDiskLib
 				{
 					this.ErrorList.Add(new Exception("Fail to create object register"));
 					this.CacheType = CacheType.UNKNOWN;
+				}
+				else
+				{
+					this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
+
+					if (this.ItemCacheStatus == CacheStatus.CACHED)
+					{
+						int resolveLinkStatus = this.ResolveLink();
+
+						switch (resolveLinkStatus)
+						{
+							case 0:
+							{
+								this.ErrorList.Add(new Exception("The path is pointing to the original directory. The cache status is incorrect."));
+								break;
+							}
+							case 1:
+							{
+								break;
+							}
+							default:
+							{
+								// The exception is save automatically in ErrorList in ResolveLink method.
+								break;
+							}
+						}
+					}
 				}
 			}
 			else
@@ -242,6 +304,33 @@ namespace CacheDiskLib
 				{
 					this.ErrorList.Add(new Exception("Fail to create object register"));
 					this.CacheType = CacheType.UNKNOWN;
+				}
+				else
+				{
+					this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
+
+					if (this.ItemCacheStatus == CacheStatus.CACHED)
+					{
+						int resolveLinkStatus = this.ResolveLink();
+						
+						switch (resolveLinkStatus)
+						{
+							case 0:
+							{
+								this.ErrorList.Add(new Exception("The path is pointing to the original directory. The cache status is incorrect."));
+								break;
+							}
+							case 1:
+							{
+								break;
+							}
+							default:
+							{
+								// The exception is save automatically in ErrorList in ResolveLink method.
+								break;
+							}
+						}
+					}
 				}
 			}
 			else
@@ -400,6 +489,33 @@ namespace CacheDiskLib
 					this.ErrorList.Add(new Exception("Fail to create object register"));
 					this.CacheType = CacheType.UNKNOWN;
 				}
+				else
+				{
+					this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
+
+					if (this.ItemCacheStatus == CacheStatus.CACHED)
+					{
+						int resolveLinkStatus = this.ResolveLink();
+
+						switch (resolveLinkStatus)
+						{
+							case 0:
+							{
+								this.ErrorList.Add(new Exception("The path is pointing to the original directory. The cache status is incorrect."));
+								break;
+							}
+							case 1:
+							{
+								break;
+							}
+							default:
+							{
+								// The exception is save automatically in ErrorList in ResolveLink method.
+								break;
+							}
+						}
+					}
+				}
 			}
 			else
 			{
@@ -492,8 +608,9 @@ namespace CacheDiskLib
 
 							CacheDiskDataTools.TransferData(ItemDirInfo.FullName, CacheDirInfo.FullName, this.CacheType, false, this.replicateFileAttributes, this.replicateAccessControl, ref ErrorList, this.ShowConsoleOutput);
 							
-							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
-							string? target = this.link.LinkTarget;
+							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							string? target = link.LinkTarget;
+							this.ResolveLink();
 
 							if (target != null)
 							{
@@ -569,8 +686,9 @@ namespace CacheDiskLib
 								CacheDiskDataTools.TransferData(ItemDirInfo.FullName, BackupDirInfo.FullName, CacheType.MOVE, true, this.replicateFileAttributes, this.replicateAccessControl, ref this.ErrorList, this.ShowConsoleOutput);
 							}
 
-							this.link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
+							FileSystemInfo link = Directory.CreateSymbolicLink(this.Path, this.CacheDiskPath);
 							string? target = link.LinkTarget;
+							this.ResolveLink();
 
 							if (target != null)
 							{
@@ -642,9 +760,10 @@ namespace CacheDiskLib
 
 						if (this.link != null)
 						{
-							if (this.link.Exists)
+							DirectoryInfo tmpLinkInfo = new DirectoryInfo(this.link);
+							if (tmpLinkInfo.Exists)
 							{
-								this.link.Delete();
+								tmpLinkInfo.Delete();
 								this.link = null;
 							}
 						}
@@ -767,8 +886,12 @@ namespace CacheDiskLib
 							// Remove the link available in path:
 							if (this.link != null)
 							{
-								this.link.Delete();
-								this.link = null;
+								DirectoryInfo tmpLinkInfo = new DirectoryInfo(this.link);
+								if (tmpLinkInfo.Exists)
+								{
+									tmpLinkInfo.Delete();
+									this.link = null;
+								}
 							}
 
 							if (this.ShowConsoleOutput)
