@@ -51,11 +51,25 @@ namespace CacheDiskConsole
 			bool remReg = false;
 			string? usr = "";
 
-			while ((usr != "Y" || usr != "y") && (usr != "N" || usr != "n"))
+			while (true)
 			{
 				usr = "";
-				Console.Write("Remove Cache Reg? (Y/N): ");
+				Console.Write("\nRemove Cache Reg? (Y/N): ");
 				usr = Console.ReadLine();
+
+				if (usr == "Y" || usr == "y")
+				{
+					remReg = true;
+					break;
+				}
+				else if (usr == "N" || usr == "n")
+				{
+					break;
+				}
+				else
+				{
+					Console.WriteLine($"The entry {usr} is not valid! Try again.");
+				}
 			}
 
 			if (remReg)
