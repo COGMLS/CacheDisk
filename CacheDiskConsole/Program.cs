@@ -17,15 +17,23 @@ namespace CacheDiskConsole
 			string backup = "";
 			bool useBackup = false;
 
+			/**
+			 * 0 - Normal test Cache and Restore
+			 * 1 - Only Cache
+			 * 2 - Only Restore
+			 */
+			int testType = 0;
+
 			if (args.Length > 0)
 			{
 				path = args[0];
 				destination = args[1];
+				testType = int.Parse(args[2]);
 			}
 
-			if (args.Length > 2)
+			if (args.Length > 3)
 			{
-				backup = args[2];
+				backup = args[3];
 				useBackup = true;
 			}
 
@@ -43,10 +51,16 @@ namespace CacheDiskConsole
 			}
 
 			cache.SetConsoleOutputOperation(true);
+			
+			if (testType == 0 || testType == 1)
+			{
+				cache.CacheItem();
+			}
 
-			cache.CacheItem();
-
-			cache.RestoreCache();
+			if (testType == 0 ||  testType == 2)
+			{
+				cache.RestoreCache();
+			}
 
 			bool remReg = false;
 			string? usr = "";
