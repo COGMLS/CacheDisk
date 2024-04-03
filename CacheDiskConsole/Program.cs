@@ -62,6 +62,11 @@ namespace CacheDiskConsole
 				cache.RestoreCache();
 			}
 
+			if (testType == 3)
+			{
+				cache.RevertCachedItem();
+			}
+
 			bool remReg = false;
 			string? usr = "";
 
