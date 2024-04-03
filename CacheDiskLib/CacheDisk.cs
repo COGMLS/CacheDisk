@@ -997,10 +997,10 @@ namespace CacheDiskLib
 		}
 
 		/// <summary>
-		/// Remove Cache Disk from database
+		/// Remove register file to Cache Disk item from database
 		/// </summary>
-		/// <remarks>NOTE: This method remove the register file without restoring the cached item. Use only when the item is not cached!</remarks>
-		public void RemoveCache()
+		/// <remarks>NOTE: This method remove the register file without take action on cache item. Use only when the item is not cached!</remarks>
+		public void RemoveConfigCache()
 		{
 			if (this.CacheDiskReg != null)
 			{
