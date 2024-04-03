@@ -88,7 +88,7 @@ namespace CacheDiskConsole
 
 			if (remReg)
 			{
-				cache.RemoveCache();
+				cache.RemoveConfigCache();
 			}
 #endif // DEBUG
 
