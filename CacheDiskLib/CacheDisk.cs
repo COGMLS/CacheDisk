@@ -69,26 +69,15 @@ namespace CacheDiskLib
 		}
 
 		/// <summary>
-		/// Create a Cache Disk object to manage the cached item
+		/// Check if the paths used in for Path, CacheDiskPath and BackupPath are ok
 		/// </summary>
-		/// <param name="Path">Location of the directory to cached it.</param>
-		/// <param name="CachePath">Location to store the cached directory. Recommended to store in a faster disk than original location.</param>
-		public CacheDisk (string Path, string CachePath)
+		/// <param name="isPathOk">Reference variable to Path status</param>
+		/// <param name="isCacheDiskPathOk">Reference variable to CacheDiskPath status</param>
+		/// <param name="isBackupPathOk">Reference variable to BackupPath status</param>
+		/// <param name="testBackupPath">Make test the backup path status or not</param>
+		private void CheckPaths(ref bool isPathOk, ref bool isCacheDiskPathOk, ref bool isBackupPathOk, bool testBackupPath = false)
 		{
-			CacheDataTools.CheckAppDataDirectory();
-
-			this.ErrorList = new List<Exception>();
-
-			this.Path = Path;
-			this.BackupPath = "";
-			this.CacheDiskPath = CachePath;
-			this.Id = new CacheID();
-
-			// Test all paths:
-
-			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
-			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
-
+			// Test the path:
 			if (isPathOk)
 			{
 				this.Path = System.IO.Path.GetFullPath(this.Path);
@@ -98,6 +87,7 @@ namespace CacheDiskLib
 				this.ErrorList.Add(new Exception("Path is not fully qualified!"));
 			}
 
+			// Test cache disk path:
 			if (isCacheDiskPathOk)
 			{
 				this.CacheDiskPath = System.IO.Path.GetFullPath(this.CacheDiskPath);
@@ -123,6 +113,107 @@ namespace CacheDiskLib
 			{
 				this.ErrorList.Add(new Exception("CacheDiskPath is not fully qualified!"));
 			}
+
+			// Test the backup path if is not null (with backup support operation):
+			if (testBackupPath)
+			{
+				if (isBackupPathOk)
+				{
+					this.BackupPath = System.IO.Path.GetFullPath(this.BackupPath);
+
+					if (isPathOk)
+					{
+						DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
+
+						// Treat the backup path if only the root directory was send
+						if (!this.BackupPath.EndsWith(pathInfo.Name + ".cached"))
+						{
+							this.BackupPath = System.IO.Path.Combine(this.BackupPath, pathInfo.Name + ".cached");
+
+							if (Directory.Exists(this.BackupPath))
+							{
+								// If a path to this location already exist generate a error:
+								this.ErrorList.Add(new Exception($"Backup Path already used! ({this.BackupPath})"));
+							}
+						}
+					}
+				}
+				else
+				{
+					this.ErrorList.Add(new Exception("BackupPath is not fully qualified!"));
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="isPathOk">Reference variable to Path status</param>
+		/// <param name="isCacheDiskPathOk">Reference variable to CacheDiskPath status</param>
+		/// <param name="isBackupPathOk">Reference variable to BackupPath status</param>
+		/// <param name="testBackupPathErrors">Test the backup path erros or not</param>
+		private void CheckPathsErrors(ref bool isPathOk, ref bool isCacheDiskPathOk, ref bool isBackupPathOk, bool testBackupPathErrors = false)
+		{
+			string PathsNotOk = "";
+			short PathExceptions = 0;
+
+			if (!isPathOk)
+			{
+				PathsNotOk += $" {this.Path}";
+				PathExceptions++;
+			}
+
+			if (!isCacheDiskPathOk)
+			{
+				PathsNotOk += $" {this.CacheDiskPath}";
+				PathExceptions++;
+			}
+
+			if (testBackupPathErrors)
+			{
+				if (!isBackupPathOk)
+				{
+					PathsNotOk += $" {this.BackupPath}";
+					PathExceptions++;
+				}
+			}
+
+			if (PathExceptions > 1)
+			{
+				this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
+				throw this.ReturnLastError();
+			}
+			else
+			{
+				this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
+				throw this.ReturnLastError();
+			}
+		}
+
+		/// <summary>
+		/// Create a Cache Disk object to manage the cached item
+		/// </summary>
+		/// <param name="Path">Location of the directory to cached it.</param>
+		/// <param name="CachePath">Location to store the cached directory. Recommended to store in a faster disk than original location.</param>
+		public CacheDisk (string Path, string CachePath)
+		{
+			CacheDataTools.CheckAppDataDirectory();
+
+			this.ErrorList = new List<Exception>();
+
+			this.Path = Path;
+			this.BackupPath = "";
+			this.CacheDiskPath = CachePath;
+			this.Id = new CacheID();
+
+			// Test all paths:
+
+			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
+			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
+			bool isBackupPathOk = false;
+
+			// Test the paths:
+			this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, false);
 
 			if (isPathOk && isCacheDiskPathOk)
 			{
@@ -166,31 +257,7 @@ namespace CacheDiskLib
 			}
 			else
 			{
-				string PathsNotOk = "";
-				short PathExceptions = 0;
-
-				if (!isPathOk)
-				{
-					PathsNotOk += $" {this.Path}";
-					PathExceptions++;
-				}
-
-				if (!isCacheDiskPathOk)
-				{
-					PathsNotOk += $" {this.CacheDiskPath}";
-					PathExceptions++;
-				}
-
-				if (PathExceptions > 1)
-				{
-					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
-				else
-				{
-					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
+				this.CheckPathsErrors(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, false);
 			}
 
 #if DEBUG
@@ -232,66 +299,8 @@ namespace CacheDiskLib
 			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
 			bool isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.BackupPath);
 
-			if (isPathOk)
-			{
-				this.Path = System.IO.Path.GetFullPath(this.Path);
-			}
-			else
-			{
-				this.ErrorList.Add(new Exception("Path is not fully qualified!"));
-			}
-
-			if (isCacheDiskPathOk)
-			{
-				this.CacheDiskPath = System.IO.Path.GetFullPath(this.CacheDiskPath);
-
-				if (isPathOk)
-				{
-					DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
-
-					// Treat the cache disk path if only the root directory was send
-					if (!this.CacheDiskPath.EndsWith(pathInfo.Name))
-					{
-						this.CacheDiskPath = System.IO.Path.Combine(this.CacheDiskPath, pathInfo.Name);
-
-						if (Directory.Exists(this.CacheDiskPath))
-						{
-							// If a path to this location already exist generate a error:
-							this.ErrorList.Add(new Exception($"Cache Disk Path already used! ({this.CacheDiskPath})"));
-						}
-					}
-				}
-			}
-			else
-			{
-				this.ErrorList.Add(new Exception("CacheDiskPath is not fully qualified!"));
-			}
-
-			if (isBackupPathOk)
-			{
-				this.BackupPath = System.IO.Path.GetFullPath(this.BackupPath);
-
-				if (isPathOk)
-				{
-					DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
-
-					// Treat the backup path if only the root directory was send
-					if (!this.BackupPath.EndsWith(pathInfo.Name + ".cached"))
-					{
-						this.BackupPath = System.IO.Path.Combine(this.BackupPath, pathInfo.Name + ".cached");
-
-						if (Directory.Exists(this.BackupPath))
-						{
-							// If a path to this location already exist generate a error:
-							this.ErrorList.Add(new Exception($"Backup Path already used! ({this.BackupPath})"));
-						}
-					}
-				}
-			}
-			else
-			{
-				this.ErrorList.Add(new Exception("BackupPath is not fully qualified!"));
-			}
+			// Test the paths:
+			this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, true);
 
 			if (isPathOk && isCacheDiskPathOk && isBackupPathOk)
 			{
@@ -335,37 +344,7 @@ namespace CacheDiskLib
 			}
 			else
 			{
-				string PathsNotOk = "";
-				short PathExceptions = 0;
-
-				if (!isPathOk)
-				{
-					PathsNotOk += $" {this.Path}";
-					PathExceptions++;
-				}
-
-				if (!isCacheDiskPathOk)
-				{
-					PathsNotOk += $" {this.CacheDiskPath}";
-					PathExceptions++;
-				}
-
-				if (!isBackupPathOk)
-				{
-					PathsNotOk += $" {this.BackupPath}";
-					PathExceptions++;
-				}
-
-				if (PathExceptions > 1)
-				{
-					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
-				else
-				{
-					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
+				this.CheckPathsErrors(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, true);
 			}
 
 #if DEBUG
