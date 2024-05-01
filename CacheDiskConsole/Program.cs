@@ -21,6 +21,7 @@ namespace CacheDiskConsole
 			 * 0 - Normal test Cache and Restore
 			 * 1 - Only Cache
 			 * 2 - Only Restore
+			 * 3 - Revert cache
 			 */
 			int testType = 0;
 
