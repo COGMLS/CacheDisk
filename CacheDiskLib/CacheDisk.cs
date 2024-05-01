@@ -190,6 +190,22 @@ namespace CacheDiskLib
 			}
 		}
 
+		private void GetDebugInfo()
+		{
+			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
+
+			if (this.CacheDiskReg != null)
+			{
+				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
+				{
+					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+					{
+						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+					}
+				}
+			}
+		}
+
 		/// <summary>
 		/// Create a Cache Disk object to manage the cached item
 		/// </summary>
@@ -261,19 +277,8 @@ namespace CacheDiskLib
 			}
 
 #if DEBUG
-			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
-
-			if (this.CacheDiskReg != null)
-			{
-				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
-				{
-					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
-					{
-						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
-					}
-				}
-			}
-#endif
+			this.GetDebugInfo();
+#endif // !DEBUG
 		}
 
 		/// <summary>
@@ -348,18 +353,7 @@ namespace CacheDiskLib
 			}
 
 #if DEBUG
-			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
-
-			if (this.CacheDiskReg != null)
-			{
-				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
-				{
-					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
-					{
-						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
-					}
-				}
-			}
+			this.GetDebugInfo();
 #endif // !DEBUG
 		}
 
@@ -384,6 +378,7 @@ namespace CacheDiskLib
 
 			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
 			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
+			bool isBackupPathOk = false;
 
 			if (isPathOk)
 			{
@@ -394,59 +389,13 @@ namespace CacheDiskLib
 					this.BackupPath = this.Path + ".cached";
 				}
 			}
-			else
+
+			if (MakeBackup)
 			{
-				this.ErrorList.Add(new Exception("Path is not fully qualified!"));
+				isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.BackupPath);
 			}
 
-			bool isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.BackupPath);
-
-			if (isCacheDiskPathOk)
-			{
-				this.CacheDiskPath = System.IO.Path.GetFullPath(this.CacheDiskPath);
-
-				if (isPathOk)
-				{
-					DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
-
-					// Treat the cache disk path if only the root directory was send
-					if (!this.CacheDiskPath.EndsWith(pathInfo.Name))
-					{
-						this.CacheDiskPath = System.IO.Path.Combine(this.CacheDiskPath, pathInfo.Name);
-
-						if (Directory.Exists(this.CacheDiskPath))
-						{
-							// If a path to this location already exist generate a error:
-							this.ErrorList.Add(new Exception($"Cache Disk Path already used! ({this.CacheDiskPath})"));
-						}
-					}
-				}
-			}
-			else
-			{
-				this.ErrorList.Add(new Exception("CacheDiskPath is not fully qualified!"));
-			}
-
-			if (isBackupPathOk)
-			{
-				DirectoryInfo pathInfo = new DirectoryInfo(this.Path);
-
-				// Treat the backup path if only the root directory was send
-				if (!this.BackupPath.EndsWith(pathInfo.Name + ".cached"))
-				{
-					this.BackupPath = System.IO.Path.Combine(this.BackupPath, pathInfo.Name + ".cached");
-
-					if (Directory.Exists(this.BackupPath))
-					{
-						// If a path to this location already exist generate a error:
-						this.ErrorList.Add(new Exception($"Backup Path already used! ({this.BackupPath})"));
-					}
-				}
-			}
-			else
-			{
-				this.ErrorList.Add(new Exception("BackupPath is not fully qualified!"));
-			}
+			this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, MakeBackup);
 
 			if (isPathOk && isCacheDiskPathOk)
 			{
@@ -498,54 +447,133 @@ namespace CacheDiskLib
 			}
 			else
 			{
-				string PathsNotOk = "";
-				short PathExceptions = 0;
-
-				if (!isPathOk)
-				{
-					PathsNotOk += $" {this.Path}";
-					PathExceptions++;
-				}
-
-				if (!isCacheDiskPathOk)
-				{
-					PathsNotOk += $" {this.CacheDiskPath}";
-					PathExceptions++;
-				}
-
-				if (!isBackupPathOk && MakeBackup)
-				{
-					PathsNotOk += $" {this.BackupPath}";
-					PathExceptions++;
-				}
-
-				if (PathExceptions > 1)
-				{
-					this.ErrorList.Add(new Exception($"Not all paths are qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
-				else
-				{
-					this.ErrorList.Add(new Exception($"A path is not qualified to Cache Disk:{PathsNotOk}"));
-					throw this.ReturnLastError();
-				}
+				this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, MakeBackup);
 			}
 
 #if DEBUG
-			this.ErrorList.Add(new Exception("Cache ID Status: " + this.Id.status.ToString()));
+			this.GetDebugInfo();
+#endif // !DEBUG
+		}
 
-			if (this.CacheDiskReg != null)
+		/// <summary>
+		/// Get a Cache Disk object to manage the cached item
+		/// </summary>
+		/// <param name="Id">ID of object that already was created</param>
+		public CacheDisk(CacheID Id)
+		{
+			CacheDataTools.CheckAppDataDirectory();
+
+			this.ErrorList = new List<Exception>();
+
+			//this.Path = Path;
+			//this.BackupPath = "";
+			//this.CacheDiskPath = CachePath;
+			//this.Id = new CacheID();
+
+			this.CacheDiskReg = new Register(Id);
+
+			this.Path = this.CacheDiskReg.GetPath();
+			this.CacheDiskPath = this.CacheDiskReg.GetCacheDiskPath();
+			this.BackupPath = "";
+
+			if (this.CacheDiskReg.GetBackupPath() != null)
 			{
-				if (this.CacheDiskReg.GetRegisterErrors().Count > 0)
+				this.BackupPath = this.CacheDiskReg.GetBackupPath();
+			}
+
+			// Test all paths:
+
+			bool isPathOk = System.IO.Path.IsPathFullyQualified(this.Path);
+			bool isCacheDiskPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
+			bool isBackupPathOk = false;
+			bool MakeBackup = false;
+
+			if (this.BackupPath != "")
+			{
+				isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.CacheDiskPath);
+				MakeBackup = true;
+			}
+
+			//if (isPathOk)
+			//{
+			//	this.Path = System.IO.Path.GetFullPath(this.Path);
+			//
+			//	if (MakeBackup)
+			//	{
+			//		this.BackupPath = this.Path + ".cached";
+			//	}
+			//}
+
+			//if (MakeBackup)
+			//{
+			//	isBackupPathOk = System.IO.Path.IsPathFullyQualified(this.BackupPath);
+			//}
+
+			//this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, MakeBackup);
+
+			if (isPathOk && isCacheDiskPathOk && this.CacheDiskReg.IsRegisterOk())
+			{
+				//if (MakeBackup)
+				//{
+				//	this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath);
+				//}
+				//else
+				//{
+				//	this.CacheDiskReg = new Register(this.Path, this.Id, this.CacheDiskPath, BackupPath);
+				//}
+
+				this.CacheType = this.CacheDiskReg.GetCacheType();
+				//this.Id = this.CacheDiskReg.GetId();
+				this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
+
+				if (this.CacheDiskReg == null)
 				{
-					foreach (CacheDiskRegisterErrorCodes e in this.CacheDiskReg.GetRegisterErrors())
+					this.ErrorList.Add(new Exception("Fail to recover object register"));
+					this.CacheType = CacheType.UNKNOWN;
+				}
+				else
+				{
+					this.ItemCacheStatus = this.CacheDiskReg.GetCachedStatus();
+
+					if (this.ItemCacheStatus == CacheStatus.CACHED)
 					{
-						this.ErrorList.Add(new Exception("Register Error Code: " + e.ToString()));
+						int resolveLinkStatus = this.ResolveLink();
+
+						switch (resolveLinkStatus)
+						{
+							case 0:
+							{
+								this.ErrorList.Add(new Exception("The path is pointing to the original directory. The cache status is incorrect."));
+								break;
+							}
+							case 1:
+							{
+								break;
+							}
+							default:
+							{
+								// The exception is save automatically in ErrorList in ResolveLink method.
+								break;
+							}
+						}
 					}
 				}
 			}
+			else
+			{
+				this.CheckPaths(ref isPathOk, ref isCacheDiskPathOk, ref isBackupPathOk, MakeBackup);
+			}
+
+#if DEBUG
+			this.GetDebugInfo();
 #endif // !DEBUG
 		}
+
+		/// <summary>
+		/// Get a Cache Disk object to manage the cached item
+		/// </summary>
+		/// <param name="IdStr">Use an string ID of object that already was created</param>
+		//public CacheDisk(string IdStr)
 
 		/// <summary>
 		/// Get the error detected
